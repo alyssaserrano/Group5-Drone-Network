@@ -94,7 +94,7 @@ The entry point of this project is the ```main.py``` file, we can even run it di
 ## Installation and usage
 Firstly, download this project:
 ```
-git clone https://github.com/Zihao-Felix-Zhou/UavNetSim.git
+git clone https://github.com/Zihao-Felix-Zhou/UavNetSim-v1.git
 ```
 Run ```main.py``` to start the simulation. 
 
@@ -106,7 +106,7 @@ After the packet is read, a packet type determination will be performed first. I
 When the packet gets the buffer resource, MAC protocol will be performed to contend for the wireless channel. When the packet is successfully received by the next hop, packet type determination needs to be performed. For example, if the received packet is a data packet, an ACK packet is needed to reply after an SIFS time. In addition, if the receiver is the destination of the incoming data packet, some metrics will be recorded (PDR, end-to-end delay, etc.), otherwise, it means that this data packet needs to be further relayed so it will be put into the ```transmitting_queue``` of the receiver drone.
 
 <div align="center">
-<img src="https://github.com/ZihaoZhouSCUT/Simulation-Platform-for-UAV-network/blob/master/img/transmitting_procedure.png" width="800px">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/transmitting_procedure.png" width="800px">
 </div>
 
 ## Module overview
@@ -114,7 +114,7 @@ When the packet gets the buffer resource, MAC protocol will be performed to cont
 Packet routing plays an important role in UAV networks, which enables cooperation among different UAV nodes. In this project, **Greedy routing**, **Gradient routing (GRAd)**, **Destination-Sequenced Distance Vector routing (DSDV)**, and some **RL-based routing protocols** have been implemented. The following figure illustrates the basic procedure of packet routing. More detailed information can be found in the corresponding papers [1]-[5].
 
 <div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim/blob/master/img/routing.png" width="700px">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/routing.png" width="700px">
 </div>
 
 ### Media access control (MAC) protocol
@@ -126,7 +126,7 @@ In this project, **basic Carrier-sense multiple access with collision avoidance 
 4. if the countdown is interrupted, it means that the drone loses the game. The drone then freezes the timer and waits for the channel to be idle again before re-starting its timer
 
 <div align="center">
-<img src="https://github.com/ZihaoZhouSCUT/Simulation-Platform-for-UAV-network/blob/master/img/csmaca.png" width="800px">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/csmaca.png" width="800px">
 </div>
 
 The following figure demonstrates the packet transmission flow when pure aloha is adopted. When a drone installed a pure aloha protocol wants to transmit a packet:
@@ -137,7 +137,7 @@ The following figure demonstrates the packet transmission flow when pure aloha i
 4. if not, the node will wait a random amount of time, according to the number of re-transmission attempts, and then send the packet again
 
 <div align="center">
-<img src="https://github.com/ZihaoZhouSCUT/Simulation-Platform-for-UAV-network/blob/master/img/pure_aloha.png" width="800px">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/pure_aloha.png" width="800px">
 </div>
 
 From the above illustration, we can see that, it is not only two drones sending packets simultaneously that cause packet collisions. If there is an overlap in the transmission time of two data packets, it also indicates that a collision occurs. So in our project, each drone checks its inbox every very short interval and has several important things to do (as shown in the following figure):
@@ -147,20 +147,20 @@ From the above illustration, we can see that, it is not only two drones sending 
 3. if there is such a record, then find other packets that overlap with this packet in transmission time in the inbox records of all drones, and use them to calculate SINR.
 
 <div align="center">
-<img src="https://github.com/ZihaoZhouSCUT/Simulation-Platform-for-UAV-network/blob/master/img/reception_logic.png" width="800px">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/reception_logic.png" width="800px">
 </div>
 
 ### Mobility model
 The mobility model is one of the most important mudules to show the characteristics of a UAV network more realistically. In this project, **Gauss-Markov 3D mobility model**, **Random Walk 3D mobility model**, and **Random Waypoint 3D mobility model** have been implemented. Specifically, since it is quite difficult to achieve continuous movement of drones in discrete time simulation, we set a ```position_update_interval``` to update the positions of drones periodically, that is, it is assumed that the drone moves continuously within this time interval. If the time interval ```position_update_interval``` is smaller, the simulation accuracy will be higher, but the corresponding simulation time will be longer. Thus, there will be a trade-off. Besides, the time interval that the drone updates its direction can also be set manually. The trajectories of a single drone within 100 seconds of the simulation under the two mobility models are shown as follows:
 
 <div align="center">
-<img src="https://github.com/ZihaoZhouSCUT/Simulation-Platform-for-UAV-network/blob/master/img/mobility_model.png" width="800px">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/mobility_model.png" width="800px">
 </div>
 
 ### Energy model
 The energy model of our platform is based on the work of Y. Zeng, et al. The figure below shows the power required for different drone flying speeds. The energy consumption is equal to the power multiplied by the flight time at this speed.
 <div align="center">
-<img src="https://github.com/ZihaoZhouSCUT/Simulation-Platform-for-UAV-network/blob/master/img/energy_model.png" width="400px">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/energy_model.png" width="400px">
 </div>
 
 ### Visualization
