@@ -201,7 +201,7 @@ Our simulation platform can be expanded based on your research needs, including 
 [7] N. Abramson, "[The ALOHA system: Another alternative for computer communications](n.overleaf.com/project/678e52bd44cc7c6c70e39d90)," in *Proceedings of the November 17-19, 1970, Fall Joint Computer Conference*, pp. 281-285, 1970.
 
 ## Contributing
-Issues and pull requests are warmly welcome! 
+Contributions are warmly welcome! 
 
 ## Show your support
 Give a ⭐ if this project helped you!
