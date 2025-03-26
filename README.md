@@ -1,5 +1,5 @@
 <div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim/blob/master/img/logo.png" width="650px">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/logo.png" width="650px">
 </div>
 
 <div align="center">
