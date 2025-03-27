@@ -10,6 +10,7 @@ from routing.greedy.greedy import Greedy
 from routing.grad.grad import Grad
 from routing.opar.opar import Opar
 from routing.q_routing.q_routing import QRouting
+from routing.qgeo.qgeo import QGeo
 from mac.csma_ca import CsmaCa
 from mac.pure_aloha import PureAloha
 from mobility.gauss_markov_3d import GaussMarkov3D
@@ -76,7 +77,7 @@ class Drone:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
-    Updated at: 2025/2/24
+    Updated at: 2025/3/27
     """
 
     def __init__(self,
@@ -166,11 +167,21 @@ class Drone:
                 dst_id = self.rng_drone.choice(all_candidate_list)
                 destination = self.simulator.drones[dst_id]  # obtain the destination drone
 
+                # data packet length
+                if config.VARIABLE_PAYLOAD_LENGTH:
+                    fluctuation = self.rng_drone.randint(-config.MAXIMUM_PAYLOAD_VARIATION, config.MAXIMUM_PAYLOAD_VARIATION)
+                    payload_length = config.AVERAGE_PAYLOAD_LENGTH + fluctuation
+                else:
+                    payload_length = config.AVERAGE_PAYLOAD_LENGTH  # in bit, 1024 bytes
+
+                data_packet_length = (config.IP_HEADER_LENGTH + config.MAC_HEADER_LENGTH +
+                                      config.PHY_HEADER_LENGTH + payload_length)
+
                 pkd = DataPacket(self,
                                  dst_drone=destination,
                                  creation_time=self.env.now,
                                  data_packet_id=GLOBAL_DATA_PACKET_ID,
-                                 data_packet_length=config.DATA_PACKET_LENGTH,
+                                 data_packet_length=data_packet_length,
                                  simulator=self.simulator)
                 pkd.transmission_mode = 0  # the default transmission mode of data packet is "unicast" (0)
 
@@ -403,7 +414,12 @@ class Drone:
         :return:
         """
 
-        max_transmission_time = (config.DATA_PACKET_LENGTH / config.BIT_RATE) * 1e6  # for a single data packet
+        if config.VARIABLE_PAYLOAD_LENGTH:
+            max_transmission_time = ((config.AVERAGE_PAYLOAD_LENGTH + config.MAXIMUM_PAYLOAD_VARIATION)
+                                     / config.BIT_RATE) * 1e6  # for a single data packet
+        else:
+            max_transmission_time = (config.AVERAGE_PAYLOAD_LENGTH / config.BIT_RATE) * 1e6  # for a single data packet
+
         for item in self.inbox:
             insertion_time = item[1]  # the moment that this packet begins to be sent to the channel
             received = item[3]  # used to indicate if this packet has been processed (1: processed, 0: unprocessed)

@@ -48,7 +48,7 @@ class Grad:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/4/20
-    Updated at: 2024/5/20
+    Updated at: 2025/3/27
     """
 
     def __init__(self, simulator, my_drone):
@@ -160,7 +160,7 @@ class Grad:
                     if data_packet.packet_id not in self.simulator.metrics.datapacket_arrived:
                         latency = self.simulator.env.now - data_packet.creation_time  # in us
                         self.simulator.metrics.deliver_time_dict[data_packet.packet_id] = latency
-                        self.simulator.metrics.throughput_dict[data_packet.packet_id] = config.DATA_PACKET_LENGTH / (latency / 1e6)
+                        self.simulator.metrics.throughput_dict[data_packet.packet_id] = packet_copy.packet_length / (latency / 1e6)
                         self.simulator.metrics.hop_cnt_dict[data_packet.packet_id] = packet_copy.get_current_ttl()
                         self.simulator.metrics.datapacket_arrived.add(data_packet.packet_id)
                         logging.info('Packet: %s is received by destination UAV: %s',

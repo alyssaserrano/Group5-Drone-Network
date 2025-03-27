@@ -55,7 +55,7 @@ class QRouting:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/8/20
-    Updated at: 2025/2/25
+    Updated at: 2025/3/27
 
     """
 
@@ -143,7 +143,7 @@ class QRouting:
                 if packet_copy.packet_id not in self.simulator.metrics.datapacket_arrived:
                     latency = self.simulator.env.now - packet_copy.creation_time  # in us
                     self.simulator.metrics.deliver_time_dict[packet_copy.packet_id] = latency
-                    self.simulator.metrics.throughput_dict[packet_copy.packet_id] = config.DATA_PACKET_LENGTH / (latency / 1e6)
+                    self.simulator.metrics.throughput_dict[packet_copy.packet_id] = packet_copy.packet_length / (latency / 1e6)
                     self.simulator.metrics.hop_cnt_dict[packet_copy.packet_id] = packet_copy.get_current_ttl()
                     self.simulator.metrics.datapacket_arrived.add(packet_copy.packet_id)
                     logging.info('Packet: %s is received by destination UAV: %s',
