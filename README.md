@@ -164,7 +164,7 @@ The energy model of our platform is based on the work of Y. Zeng, et al. The fig
 </div>
 
 ### Visualization
-The platform supports interactive visualization of the packet transmission process, as well as the flying trajectories of drones. Here, I would like to thank @superboySB (Zipeng Dai) for contributing to this feature!
+The platform supports interactive visualization of the packet transmission process, as well as the flying trajectories of drones. Here, I would like to thank @superboySB (Dr. Zipeng Dai) for contributing to this feature!
 
 <div align="center">
 <img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/visualization.gif" width="900px">
