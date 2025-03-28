@@ -27,7 +27,7 @@ class VfNeighborTable:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/5/20
-    Updated at: 2024/5/21
+    Updated at: 2025/3/28
     """
 
     def __init__(self, env, my_drone):
@@ -53,6 +53,11 @@ class VfNeighborTable:
     def attractive_force(self):
         """
         Calculate the attractive force applied by center point
+
+        Note from ref [1]: the attractive force is introduced between every drone and the central point of the region,
+        so that it leads the drones to move towards the centre of the region. With the attractive force, the drones
+        can maintain connectivity among themselves.
+
         :return: attractive force in three dimensions
         """
 
@@ -74,6 +79,10 @@ class VfNeighborTable:
     def repulsive_force(self):
         """
         Calculate the repulsive force applied by neighbors
+
+        Note from ref [1]: the repulsive force is introduced between every pair of drones if their distance is less
+        than a certain value. With repulsive force, the drones can increase the coverage.
+
         :return: repulsive force in three dimensions
         """
 

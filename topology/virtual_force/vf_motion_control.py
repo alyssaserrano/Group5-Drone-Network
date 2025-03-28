@@ -35,7 +35,7 @@ class VfMotionController:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/5/20
-    Updated at: 2024/5/21
+    Updated at: 2025/3/28
     """
 
     def __init__(self, drone):
@@ -52,7 +52,7 @@ class VfMotionController:
         self.max_z = config.MAP_HEIGHT
 
         self.neighbor_table = VfNeighborTable(drone.simulator.env, drone)
-        self.position_update_interval = 1 * 1e5
+        self.position_update_interval = 1 * 1e5  # 0.1s
         self.max_step = 20
         self.pause_time = 1 * 1e6
         self.next_position = self.get_next_position()
@@ -131,15 +131,18 @@ class VfMotionController:
 
             # judge if the drone has reach the target waypoint
             if euclidean_distance_3d(next_pos, self.next_position) < 20:
+                config.GL_ID_VF_PACKET += 1
                 hello_msg = VfPacket(src_drone=self.my_drone,
                                      creation_time=self.simulator.env.now,
-                                     id_hello_packet=10,
+                                     id_hello_packet=config.GL_ID_VF_PACKET,
                                      hello_packet_length=config.HELLO_PACKET_LENGTH,
                                      simulator=self.simulator)
 
                 hello_msg.transmission_mode = 1
-                yield self.simulator.env.process(self.my_drone.packet_coming(hello_msg))
-                # self.my_drone.transmitting_queue.put(hello_msg)
+
+                # Note: it should be noted that when a node finish one round of movement, it needs to stop and
+                # broadcast its new location information
+                self.my_drone.transmitting_queue.put(hello_msg)
 
                 yield env.timeout(self.pause_time)
 
@@ -147,8 +150,10 @@ class VfMotionController:
 
             drone.coords = next_pos
             yield env.timeout(self.position_update_interval)
-            energy_consumption = (self.position_update_interval / 1e6) * drone.energy_model.power_consumption(drone.speed)
-            drone.residual_energy -= energy_consumption
+
+            # User can choose if energy consumption is considered in their project
+            # energy_consumption = (self.position_update_interval / 1e6) * drone.energy_model.power_consumption(drone.speed)
+            # drone.residual_energy -= energy_consumption
 
     def show_trajectory(self):
         x = []
