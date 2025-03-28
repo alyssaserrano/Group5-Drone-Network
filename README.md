@@ -163,6 +163,24 @@ The energy model of our platform is based on the work of Y. Zeng, et al. The fig
 <img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/energy_model.png" width="400px">
 </div>
 
+### Motion control
+This platform also supports user to design motion control algorithms for UAV swarm network. In the current version, a virtual force based motion control algorithm is implemented, which incorporates the attractive force from the central point of the region and the repulsive force from neighbor drones. By applying this algorithm, an initial and possibly disconnected network can be self organized into a bi-connected network. The figure above demonstrates the changes of the network topology after motion control. 
+<div align="center">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/virtual_force.png" width="800px">
+</div>
+
+How to use? In ```entities/drone.py```, replace the ```mobility_model``` with ```motion_controller```:
+```python
+from topology.virtual_force.vf_motion_control import VfMotionController
+
+class Drone:
+  def __init__(self, env, node_id, coords, speed, inbox, simulator):
+    ...
+    # self.mobility_model = GaussMarkov3D(self)  REMEMBER TO COMMENT THIS SENTENCE OUT!
+    self.motion_controller = VfMotionController(self)
+    ...
+```
+
 ### Visualization
 The platform supports interactive visualization of the packet transmission process, as well as the flying trajectories of drones. Here, I would like to thank @superboySB (Dr. Zipeng Dai) for contributing to this feature!
 
