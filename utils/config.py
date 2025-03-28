@@ -38,6 +38,9 @@ RADIO_SWITCHING_TIME = 100  # us, the switching time of the transceiver mode
 SNR_THRESHOLD = 6  # dB
 
 # ---------------------- packet parameters ----------------------- #
+VARIABLE_PAYLOAD_LENGTH = 0  # whether to consider random payload length of data packet
+AVERAGE_PAYLOAD_LENGTH = 1024 * 8  # in bit, 1024 bytes
+MAXIMUM_PAYLOAD_VARIATION = 1600  # in bit
 MAX_TTL = NUMBER_OF_DRONES + 1  # maximum time-to-live value
 PACKET_LIFETIME = 10 * 1e6  # 10s
 IP_HEADER_LENGTH = 20 * 8  # header length in network layer, 20 byte
@@ -50,10 +53,6 @@ PLCP_HEADER = 8 + 8 + 16 + 16  # including signal, service, length and HEC (head
 PHY_HEADER_LENGTH = PLCP_PREAMBLE + PLCP_HEADER  # header length in physical layer, PLCP preamble + PLCP header
 
 ACK_HEADER_LENGTH = 16 * 8  # header length of ACK packet, 16 byte
-
-DATA_PACKET_PAYLOAD_LENGTH = 1024 * 8  # 1024 byte
-DATA_PACKET_LENGTH = IP_HEADER_LENGTH + MAC_HEADER_LENGTH + PHY_HEADER_LENGTH + DATA_PACKET_PAYLOAD_LENGTH
-
 ACK_PACKET_LENGTH = ACK_HEADER_LENGTH + 14 * 8  # bit
 
 HELLO_PACKET_PAYLOAD_LENGTH = 256  # bit
