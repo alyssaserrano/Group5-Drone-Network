@@ -35,7 +35,7 @@ LIGHT_SPEED = 3 * 1e8  # light speed (m/s)
 CARRIER_FREQUENCY = IEEE_802_11['carrier_frequency']  # carrier frequency (Hz)
 NOISE_POWER = 4 * 1e-11  # noise power (Watt)
 RADIO_SWITCHING_TIME = 100  # us, the switching time of the transceiver mode
-SNR_THRESHOLD = 6  # dB
+SNR_THRESHOLD = IEEE_802_11['snr_threshold']
 
 # ---------------------- packet parameters ----------------------- #
 VARIABLE_PAYLOAD_LENGTH = 0  # whether to consider random payload length of data packet

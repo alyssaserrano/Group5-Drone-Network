@@ -1,16 +1,33 @@
 class IeeeStandard:
     def __init__(self):
         # IEEE 802.11a
+        """
+        Several notes about IEEE 802.11a:
+
+        - The relationship between different bit rates and SNR threshold:
+        |--------------|-------------------|-----------------|
+        |   Bit rate   |  Modulation mode  |  SNR threshold  |
+        |   6 Mbps     |      BPSK         |      4 dB      |
+        |   9 Mbps     |      BPSK         |      5.5 dB     |
+        |   12 Mbps    |      QPSK         |      7 dB       |
+        |   18 Mbps    |      QPSK         |      8.5 dB     |
+        |   24 Mbps    |      16-QAM       |      12 dB      |
+        |   36 Mbps    |      16-QAM       |      16 dB      |
+        |   48 Mbps    |      64-QAM       |      19.5 dB    |
+        |   54 Mbps    |      64-QAM       |      21 dB      |
+        """
+
         self.a_802_11 = {'carrier_frequency': 5 * 1e9,  # 5 GHz
                   'bit_rate': 54 * 1e6,  # 54 Mbps
                   'bandwidth': 20 * 1e6,  # 20 MHz
                   'slot_duration': 9,  # microseconds
-                  'SIFS': 16}
+                  'SIFS': 16,
+                  'snr_threshold': 21}
 
         # IEEE 802.11b
         """
         Several notes about IEEE 802.11b:
-        - Spectrum partitioning (one can see img folder):
+        - Spectrum partitioning (one can find illustration in 'img' folder):
           - The IEEE 802.11b/g standard operates in the 2.4G band, with a frequency range of 2.400-2.4835 GHz and a 
             total bandwidth of 83.5 MHz
           - There are total 14 channels
@@ -21,11 +38,13 @@ class IeeeStandard:
             signal occupies a bandwidth of about 20 MHz, which is sightly lower than the bandwidth of a sub-channel
           - In 2.4 GHz band, only three sub-channels (1, 6 and 11) are non-overlapping.
         
-        - Different bit rate:
-          - 1 Mbps
-          - 2 Mbps
-          - 5.5 Mbps
-          - 11 Mbps
+        - The relationship between different bit rates and SNR threshold:
+        |--------------|-------------------|-----------------|
+        |   Bit rate   |  Modulation mode  |  SNR threshold  |
+        |    1 Mbps    |       DBPSK       |       4 dB      |
+        |    2 Mbps    |       DQPSK       |       6 dB      |
+        |   5.5 Mbps   |        CCK        |       8 dB      |
+        |   11 Mbps    |        CCK        |     10-12 dB    |
           
         Packet structure at physical layer in 802.11b
         |---------------|-------------|---------------------------------------------------|
@@ -39,15 +58,34 @@ class IeeeStandard:
             communications, 2007, pp. 118-125.
         
         """
-        self.b_802_11 = {'carrier_frequency': 2.4 * 1e9,  # ≈2.4 GHz! (since there are many sub-channels)
+        self.b_802_11 = {'carrier_frequency': 2.4 * 1e9,
                   'bit_rate': 2 * 1e6,  # up to 11 Mbps
                   'bandwidth': 22 * 1e6,  # 22 MHz
                   'slot_duration': 20,  # microseconds
-                  'SIFS': 10}
+                  'SIFS': 10,
+                  'snr_threshold': 6}
 
         # IEEE 802.11g
+
+        """
+        Several notes about IEEE 802.11b:
+        
+        - The relationship between different bit rates and SNR threshold:
+        |--------------|-------------------|-----------------|
+        |   Bit rate   |  Modulation mode  |  SNR threshold  |
+        |   6 Mbps     |      BPSK         |      4 dB      |
+        |   9 Mbps     |      BPSK         |      5.5 dB     |
+        |   12 Mbps    |      QPSK         |      7 dB       |
+        |   18 Mbps    |      QPSK         |      8.5 dB     |
+        |   24 Mbps    |      16-QAM       |      12 dB      |
+        |   36 Mbps    |      16-QAM       |      16 dB      |
+        |   48 Mbps    |      64-QAM       |      19.5 dB    |
+        |   54 Mbps    |      64-QAM       |      21 dB      |
+        """
+
         self.g_802_11 = {'carrier_frequency': 2.4 * 1e9,  # 2.4 GHz
                   'bit_rate': 54 * 1e6,  # 54 Mbps
                   'bandwidth': 20 * 1e6,  # 20 MHz
                   'slot_duration': 9,  # microseconds
-                  'SIFS': 10}
+                  'SIFS': 10,
+                  'snr_threshold': 21}
