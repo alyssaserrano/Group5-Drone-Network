@@ -37,7 +37,7 @@ class Greedy:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
-    Updated at: 2025/3/27
+    Updated at: 2025/3/30
     """
 
     def __init__(self, simulator, my_drone):
@@ -52,11 +52,16 @@ class Greedy:
 
     def broadcast_hello_packet(self, my_drone):
         config.GL_ID_HELLO_PACKET += 1
+
+        # channel assignment
+        channel_id = self.my_drone.channel_assigner.channel_assign()
+
         hello_pkd = GreedyHelloPacket(src_drone=my_drone,
                                       creation_time=self.simulator.env.now,
                                       id_hello_packet=config.GL_ID_HELLO_PACKET,
                                       hello_packet_length=config.HELLO_PACKET_LENGTH,
-                                      simulator=self.simulator)
+                                      simulator=self.simulator,
+                                      channel_id=channel_id)
         hello_pkd.transmission_mode = 1
 
         logging.info('At time: %s, UAV: %s has hello packet to broadcast',
@@ -74,8 +79,12 @@ class Greedy:
     def next_hop_selection(self, packet):
         """
         Select the next hop according to the routing protocol
-        :param packet: the data packet that needs to be sent
-        :return: next hop drone id
+
+        Parameters:
+            packet: the data packet that needs to be sent
+
+        Returns:
+            next hop drone id
         """
 
         has_route = True
@@ -102,9 +111,10 @@ class Greedy:
 
         since different routing protocols have their own corresponding packets, it is necessary to add this packet
         reception function in the network layer
-        :param packet: the received packet
-        :param src_drone_id: previous hop
-        :return: None
+
+        Parameters:
+            packet: the received packet
+            src_drone_id: previous hop
         """
 
         current_time = self.simulator.env.now
@@ -130,12 +140,16 @@ class Greedy:
                 # reply ACK
                 config.GL_ID_ACK_PACKET += 1
                 src_drone = self.simulator.drones[src_drone_id]  # previous drone
+
+                # NOTE: The pair of transceivers for a particular link are tuned to the same channel for transmission
+                # in either direction (i.e., there is no directionality in channel assignment).
                 ack_packet = AckPacket(src_drone=self.my_drone,
                                        dst_drone=src_drone,
                                        ack_packet_id=config.GL_ID_ACK_PACKET,
                                        ack_packet_length=config.ACK_PACKET_LENGTH,
                                        ack_packet=packet_copy,
-                                       simulator=self.simulator)
+                                       simulator=self.simulator,
+                                       channel_id=packet_copy.channel_id)
 
                 yield self.simulator.env.timeout(config.SIFS_DURATION)  # switch from receiving to transmitting
 
@@ -158,7 +172,8 @@ class Greedy:
                                            ack_packet_id=config.GL_ID_ACK_PACKET,
                                            ack_packet_length=config.ACK_PACKET_LENGTH,
                                            ack_packet=packet_copy,
-                                           simulator=self.simulator)
+                                           simulator=self.simulator,
+                                           channel_id=packet_copy.channel_id)
 
                     yield self.simulator.env.timeout(config.SIFS_DURATION)  # switch from receiving to transmitting
 
@@ -200,11 +215,16 @@ class Greedy:
 
             if packet.msg_type == 'hello':
                 config.GL_ID_VF_PACKET += 1
+
+                # channel assignment
+                channel_id = self.my_drone.channel_assigner.channel_assign()
+
                 ack_packet = VfPacket(src_drone=self.my_drone,
                                       creation_time=self.simulator.env.now,
                                       id_hello_packet=config.GL_ID_VF_PACKET,
                                       hello_packet_length=config.HELLO_PACKET_LENGTH,
-                                      simulator=self.simulator)
+                                      simulator=self.simulator,
+                                      channel_id=channel_id)
                 ack_packet.msg_type = 'ack'
 
                 self.my_drone.transmitting_queue.put(ack_packet)
