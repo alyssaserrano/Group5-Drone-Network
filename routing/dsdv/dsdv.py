@@ -26,7 +26,7 @@ class Dsdv:
 
     Attributes:
         simulator: the simulation platform that contains everything
-        my_drone: the drone that installed the GPSR
+        my_drone: the drone that installed the DSDV
         rng_routing: a Random class based on which we can call the function that generates the random number
         hello_interval: interval of sending hello packet
         routing_table: routing table of DSDV
@@ -40,7 +40,7 @@ class Dsdv:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/4/14
-    Updated at: 2025/3/27
+    Updated at: 2025/3/30
     """
 
     def __init__(self, simulator, my_drone):
@@ -60,8 +60,9 @@ class Dsdv:
         """
         If a node finds that it has not received a hello packet from a neighbor for more than a period of time, it can
         be considered that the link is broken and an update packet needs to be broadcast immediately
-        :param my_drone: the node that installs the protocol
-        :return: none
+
+        Parameters:
+            my_drone: the node that installs the protocol
         """
 
         while True:
@@ -70,13 +71,18 @@ class Dsdv:
 
             if flag == 1:
                 config.GL_ID_HELLO_PACKET += 1
+
+                # channel assignment
+                channel_id = self.my_drone.channel_assigner.channel_assign()
+
                 hello_pkd = DsdvHelloPacket(src_drone=my_drone,
                                             creation_time=self.simulator.env.now,
                                             id_hello_packet=config.GL_ID_HELLO_PACKET,
                                             hello_packet_length=config.HELLO_PACKET_LENGTH,
                                             packet_type='immediate',
                                             routing_table=self.routing_table.routing_table,
-                                            simulator=self.simulator)
+                                            simulator=self.simulator,
+                                            channel_id=channel_id)
                 hello_pkd.transmission_mode = 1  # broadcast
 
                 logging.info('At time: %s, UAV: %s broadcast a hello packet to announce broken links',
@@ -88,6 +94,9 @@ class Dsdv:
     def broadcast_hello_packet(self, my_drone):
         config.GL_ID_HELLO_PACKET += 1
 
+        # channel assignment
+        channel_id = self.my_drone.channel_assigner.channel_assign()
+
         self.routing_table.routing_table[self.my_drone.identifier][2] += 2  # important!
         hello_pkd = DsdvHelloPacket(src_drone=my_drone,
                                     creation_time=self.simulator.env.now,
@@ -95,7 +104,8 @@ class Dsdv:
                                     hello_packet_length=config.HELLO_PACKET_LENGTH,
                                     packet_type='periodic',
                                     routing_table=self.routing_table.routing_table,
-                                    simulator=self.simulator)
+                                    simulator=self.simulator,
+                                    channel_id=channel_id)
         hello_pkd.transmission_mode = 1  # broadcast
 
         logging.info('At time: %s, UAV: %s has hello packet to broadcast',
@@ -113,8 +123,12 @@ class Dsdv:
     def next_hop_selection(self, packet):
         """
         Select the next hop according to the routing table
-        :param packet: the data packet that needs to be sent
-        :return: next hop drone
+
+        Parameters:
+            packet: the data packet that needs to be sent
+
+        Returns:
+            Next hop drone
         """
 
         has_route = True
@@ -136,9 +150,10 @@ class Dsdv:
 
         since different routing protocols have their own corresponding packets, it is necessary to add this packet
         reception function in the network layer
-        :param packet: the received packet
-        :param src_drone_id: previous hop
-        :return: none
+
+        Parameters:
+            packet: the received packet
+            src_drone_id: previous hop
         """
 
         current_time = self.simulator.env.now
@@ -154,13 +169,17 @@ class Dsdv:
                 if packet_id not in self.processed_hello_packet:
                     self.processed_hello_packet.append(packet_id)
 
+                    # channel assignment
+                    channel_id = self.my_drone.channel_assigner.channel_assign()
+
                     hello_pkd = DsdvHelloPacket(src_drone=self.my_drone,
                                                 creation_time=self.simulator.env.now,
                                                 id_hello_packet=packet_id,
                                                 hello_packet_length=config.HELLO_PACKET_LENGTH,
                                                 packet_type='immediate',
                                                 routing_table=self.routing_table.routing_table,
-                                                simulator=self.simulator)
+                                                simulator=self.simulator,
+                                                channel_id=channel_id)
                     hello_pkd.transmission_mode = 1  # broadcast
 
                     self.simulator.metrics.control_packet_num += 1
@@ -184,7 +203,8 @@ class Dsdv:
                                        ack_packet_id=config.GL_ID_ACK_PACKET,
                                        ack_packet_length=config.ACK_PACKET_LENGTH,
                                        ack_packet=packet_copy,
-                                       simulator=self.simulator)
+                                       simulator=self.simulator,
+                                       channel_id=packet_copy.channel_id)
 
                 yield self.simulator.env.timeout(config.SIFS_DURATION)  # switch from receiving to transmitting
 
@@ -207,7 +227,8 @@ class Dsdv:
                                            ack_packet_id=config.GL_ID_ACK_PACKET,
                                            ack_packet_length=config.ACK_PACKET_LENGTH,
                                            ack_packet=packet_copy,
-                                           simulator=self.simulator)
+                                           simulator=self.simulator,
+                                           channel_id=packet_copy.channel_id)
 
                     yield self.simulator.env.timeout(config.SIFS_DURATION)  # switch from receiving to transmitting
 
@@ -248,11 +269,16 @@ class Dsdv:
 
             if packet.msg_type == 'hello':
                 config.GL_ID_VF_PACKET += 1
+
+                # channel assignment
+                channel_id = self.my_drone.channel_assigner.channel_assign()
+
                 ack_packet = VfPacket(src_drone=self.my_drone,
                                       creation_time=self.simulator.env.now,
                                       id_hello_packet=config.GL_ID_VF_PACKET,
                                       hello_packet_length=config.HELLO_PACKET_LENGTH,
-                                      simulator=self.simulator)
+                                      simulator=self.simulator,
+                                      channel_id=channel_id)
                 ack_packet.msg_type = 'ack'
 
                 self.my_drone.transmitting_queue.put(ack_packet)
