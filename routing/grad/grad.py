@@ -69,6 +69,10 @@ class Grad:
             remaining_value = self.cost_table.get_est_cost(dst_drone.identifier)
 
             config.GL_ID_GRAD_MESSAGE += 1
+
+            # channel assignment
+            channel_id = self.my_drone.channel_assigner.channel_assign()
+
             grad_message = GradMessage(src_drone=self.my_drone,
                                        dst_drone=dst_drone,
                                        creation_time=self.simulator.env.now,
@@ -77,7 +81,8 @@ class Grad:
                                        message_type="M_DATA",
                                        accrued_cost=0,
                                        remaining_value=remaining_value,
-                                       simulator=self.simulator)
+                                       simulator=self.simulator,
+                                       channel_id=channel_id)
 
             grad_message.attached_data_packet = packet
             grad_message.transmission_mode = 1  # broadcast
@@ -88,6 +93,10 @@ class Grad:
             self.my_drone.waiting_list.append(packet)  # put the data packet into waiting list
 
             config.GL_ID_GRAD_MESSAGE += 1
+
+            # channel assignment
+            channel_id = self.my_drone.channel_assigner.channel_assign()
+
             grad_message = GradMessage(src_drone=self.my_drone,
                                        dst_drone=dst_drone,
                                        creation_time=self.simulator.env.now,
@@ -96,7 +105,8 @@ class Grad:
                                        message_type="M_REQUEST",
                                        accrued_cost=0,
                                        remaining_value=20,
-                                       simulator=self.simulator)
+                                       simulator=self.simulator,
+                                       channel_id=channel_id)
 
             grad_message.transmission_mode = 1  # broadcast
             self.simulator.metrics.control_packet_num += 1
@@ -127,7 +137,11 @@ class Grad:
                     # response the request
                     config.GL_ID_GRAD_MESSAGE += 1
 
+                    # channel assignment
+                    channel_id = self.my_drone.channel_assigner.channel_assign()
+
                     est_cost = self.cost_table.get_est_cost(originator.identifier)
+
                     grad_message = GradMessage(src_drone=self.my_drone,
                                                dst_drone=originator,
                                                creation_time=self.simulator.env.now,
@@ -136,7 +150,8 @@ class Grad:
                                                message_type="M_REPLY",
                                                accrued_cost=0,
                                                remaining_value=est_cost,
-                                               simulator=self.simulator)
+                                               simulator=self.simulator,
+                                               channel_id=channel_id)
 
                     grad_message.transmission_mode = 1  # broadcast
                     self.simulator.metrics.control_packet_num += 1
@@ -213,11 +228,16 @@ class Grad:
 
             if packet.msg_type == 'hello':
                 config.GL_ID_VF_PACKET += 1
+
+                # channel assignment
+                channel_id = self.my_drone.channel_assigner.channel_assign()
+
                 ack_packet = VfPacket(src_drone=self.my_drone,
                                       creation_time=self.simulator.env.now,
                                       id_hello_packet=config.GL_ID_VF_PACKET,
                                       hello_packet_length=config.HELLO_PACKET_LENGTH,
-                                      simulator=self.simulator)
+                                      simulator=self.simulator,
+                                      channel_id=channel_id)
                 ack_packet.msg_type = 'ack'
 
                 self.my_drone.transmitting_queue.put(ack_packet)

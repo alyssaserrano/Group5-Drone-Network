@@ -11,8 +11,9 @@ class GradMessage(Packet):
                  message_type,
                  accrued_cost,
                  remaining_value,
-                 simulator):
-        super().__init__(id_message, message_length, creation_time, simulator)
+                 simulator,
+                 channel_id):
+        super().__init__(id_message, message_length, creation_time, simulator, channel_id)
 
         self.msg_type = message_type
         self.originator = src_drone  # it should be noted that relaying node cannot change this field!
