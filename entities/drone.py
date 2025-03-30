@@ -18,6 +18,7 @@ from mobility.random_walk_3d import RandomWalk3D
 from mobility.random_waypoint_3d import RandomWaypoint3D
 from topology.virtual_force.vf_motion_control import VfMotionController
 from energy.energy_model import EnergyModel
+from allocation.channel_assignment import ChannelAssigner
 from utils import config
 from utils.util_function import has_intersection
 from phy.large_scale_fading import sinr_calculator
@@ -73,11 +74,12 @@ class Drone:
         mobility_model: mobility model installed (3-D Gauss-markov, 3-D random waypoint, etc.)
         energy_model: energy consumption model installed
         residual_energy: the residual energy of drone in Joule
-        sleep: if the drone is in a "sleep" state, it cannot perform packet sending and receiving operations.
+        sleep: if the drone is in a "sleep" state, it cannot perform packet sending and receiving operations
+        channel_assigner: used to assign sub-channel for transmitting
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
-    Updated at: 2025/3/27
+    Updated at: 2025/3/30
     """
 
     def __init__(self,
@@ -128,6 +130,8 @@ class Drone:
         self.residual_energy = config.INITIAL_ENERGY
         self.sleep = False
 
+        self.channel_assigner = ChannelAssigner(self.simulator, self)
+
         self.env.process(self.generate_data_packet())
 
         self.env.process(self.feed_packet())
@@ -139,8 +143,9 @@ class Drone:
         Generate one data packet, it should be noted that only when the current packet has been sent can the next
         packet be started. When the drone generates a data packet, it will first put it into the "transmitting_queue",
         the drone reads a data packet from the head of the queue every very short time through "feed_packet()" function.
-        :param traffic_pattern: characterize the time interval between generating data packets
-        :return: none
+
+        Parameters:
+            traffic_pattern: characterize the time interval between generating data packets
         """
 
         global GLOBAL_DATA_PACKET_ID
@@ -156,7 +161,7 @@ class Drone:
                     interval of data packets follows exponential distribution
                     """
 
-                    rate = 5  # on average, how many packets are generated in 1s
+                    rate = 2  # on average, how many packets are generated in 1s
                     yield self.env.timeout(round(self.rng_drone.expovariate(rate) * 1e6))
 
                 GLOBAL_DATA_PACKET_ID += 1  # data packet id
@@ -177,12 +182,16 @@ class Drone:
                 data_packet_length = (config.IP_HEADER_LENGTH + config.MAC_HEADER_LENGTH +
                                       config.PHY_HEADER_LENGTH + payload_length)
 
+                # channel assignment
+                channel_id = self.channel_assigner.channel_assign()
+
                 pkd = DataPacket(self,
                                  dst_drone=destination,
                                  creation_time=self.env.now,
                                  data_packet_id=GLOBAL_DATA_PACKET_ID,
                                  data_packet_length=data_packet_length,
-                                 simulator=self.simulator)
+                                 simulator=self.simulator,
+                                 channel_id=channel_id)
                 pkd.transmission_mode = 0  # the default transmission mode of data packet is "unicast" (0)
 
                 self.simulator.metrics.datapacket_generated_num += 1
@@ -205,7 +214,6 @@ class Drone:
         """
         The process of waiting for an ACK will block subsequent incoming data packets to simulate the
         "head-of-line blocking problem"
-        :return: none
         """
 
         if self.enable_blocking:
@@ -235,8 +243,6 @@ class Drone:
            passes, routing protocol is executed to determine the next hop drone. If next hop is found, then this data
            packet is ready to transmit, otherwise, it will be put into the "waiting_queue".
         2) control packet: no need to determine next hop, so it will directly start waiting for buffer
-
-        :return: none
         """
 
         while True:
@@ -282,8 +288,9 @@ class Drone:
         The requirement of "ready" is:
             1) this packet is a control packet, or
             2) the valid next hop of this data packet is obtained
-        :param pkd: packet that waits to enter the buffer of drone
-        :return: none
+
+        Parameter:
+            pkd: packet that waits to enter the buffer of drone
         """
 
         if not self.sleep:
@@ -328,8 +335,9 @@ class Drone:
     def remove_from_queue(self, data_pkd):
         """
         After receiving the ack packet, drone should remove the data packet that has been acked from its queue
-        :param data_pkd: the acked data packet
-        :return: none
+
+        Parameter:
+            data_pkd: the acked data packet
         """
         temp_queue = queue.Queue()
 
@@ -349,7 +357,6 @@ class Drone:
         2. update the "inbox" by deleting the inconsequential data packet
         3. then the drone will detect if it receives a (or multiple) complete data packet(s)
         4. SINR calculation
-        :return: none
         """
 
         while True:
@@ -368,14 +375,16 @@ class Drone:
                             packet = item[0]
                             insertion_time = item[1]
                             transmitter = item[2]
+                            channel_used = item[4]
                             transmitting_time = packet.packet_length / config.BIT_RATE * 1e6
                             interval = [insertion_time, insertion_time + transmitting_time]
 
                             for interval2 in time_span:
                                 if has_intersection(interval, interval2):
-                                    transmitting_node_list.append(transmitter)
+                                    transmitting_node_list.append([transmitter, channel_used])
 
-                    transmitting_node_list = list(set(transmitting_node_list))  # remove duplicates
+                    # remove duplicates
+                    transmitting_node_list = [list(x) for x in {tuple(i) for i in transmitting_node_list}]
 
                     sinr_list = sinr_calculator(self, all_drones_send_to_me, transmitting_node_list)
 
@@ -387,7 +396,7 @@ class Drone:
                         pkd = potential_packet[which_one]
 
                         if pkd.get_current_ttl() < config.MAX_TTL:
-                            sender = all_drones_send_to_me[which_one]
+                            sender = all_drones_send_to_me[which_one][0]
 
                             logging.info('Packet %s from UAV: %s is received by UAV: %s at time: %s, sinr is: %s',
                                          pkd.packet_id, sender, self.identifier, self.simulator.env.now, max_sinr)
@@ -411,7 +420,6 @@ class Drone:
                        |==========|←- (packet p2 that has been processed, but also can affect p1, so reserve it)
         |==========|←- (packet p3 that has been processed, no impact on p1, can be deleted)
         --------------------------------------------------------> time
-        :return:
         """
 
         if config.VARIABLE_PAYLOAD_LENGTH:
@@ -448,12 +456,14 @@ class Drone:
             insertion_time = item[1]  # transmission start time
             transmitter = item[2]
             processed = item[3]  # indicate if this packet has been processed
+            channel_used = item[4]  # indicate the sub-channel that used to transmit this packet
+
             transmitting_time = packet.packet_length / config.BIT_RATE * 1e6  # expected transmission time
 
             if not processed:  # this packet has not been processed yet
                 if self.env.now >= insertion_time + transmitting_time:  # it has been transmitted completely
                     flag = 1
-                    all_drones_send_to_me.append(transmitter)
+                    all_drones_send_to_me.append([transmitter, channel_used])
                     time_span.append([insertion_time, insertion_time + transmitting_time])
                     potential_packet.append(packet)
                     item[3] = 1
