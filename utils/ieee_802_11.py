@@ -7,7 +7,7 @@ class IeeeStandard:
         - The relationship between different bit rates and SNR threshold:
         |--------------|-------------------|-----------------|
         |   Bit rate   |  Modulation mode  |  SNR threshold  |
-        |   6 Mbps     |      BPSK         |      4 dB      |
+        |   6 Mbps     |      BPSK         |      4 dB       |
         |   9 Mbps     |      BPSK         |      5.5 dB     |
         |   12 Mbps    |      QPSK         |      7 dB       |
         |   18 Mbps    |      QPSK         |      8.5 dB     |
@@ -17,20 +17,21 @@ class IeeeStandard:
         |   54 Mbps    |      64-QAM       |      21 dB      |
         """
 
-        self.a_802_11 = {'carrier_frequency': 5 * 1e9,  # 5 GHz
-                  'bit_rate': 54 * 1e6,  # 54 Mbps
-                  'bandwidth': 20 * 1e6,  # 20 MHz
-                  'slot_duration': 9,  # microseconds
-                  'SIFS': 16,
-                  'snr_threshold': 21}
+        self.a_802_11 = {'mode': 'IEEE_802_11a',
+            'carrier_frequency': 5 * 1e9,  # 5 GHz
+            'bit_rate': 54 * 1e6,  # 54 Mbps
+            'bandwidth': 20 * 1e6,  # 20 MHz
+            'slot_duration': 9,  # microseconds
+            'SIFS': 16,
+            'snr_threshold': 21}
 
         # IEEE 802.11b
         """
         Several notes about IEEE 802.11b:
         - Spectrum partitioning (one can find illustration in 'img' folder):
-          - The IEEE 802.11b/g standard operates in the 2.4G band, with a frequency range of 2.400-2.4835 GHz and a 
+          - The IEEE 802.11b standard operates in the 2.4G band, with a frequency range of 2.400-2.4835 GHz and a 
             total bandwidth of 83.5 MHz
-          - There are total 14 channels
+          - There are total 14 channels, where channel 1, 6, 11 are orthogonal
           - The bandwidth of each sub-channel is 22 MHz
           - The available channels mentioned above are defined with 5 MHz separation between consecutive carries
           - There is frequency band overlap between multiple adjacent sub-channels 
@@ -58,12 +59,13 @@ class IeeeStandard:
             communications, 2007, pp. 118-125.
         
         """
-        self.b_802_11 = {'carrier_frequency': 2.4 * 1e9,
-                  'bit_rate': 2 * 1e6,  # up to 11 Mbps
-                  'bandwidth': 22 * 1e6,  # 22 MHz
-                  'slot_duration': 20,  # microseconds
-                  'SIFS': 10,
-                  'snr_threshold': 6}
+        self.b_802_11 = {'mode': 'IEEE_802_11b',
+            'carrier_frequency': 2.4 * 1e9,
+            'bit_rate': 2 * 1e6,  # up to 11 Mbps
+            'bandwidth': 22 * 1e6,  # 22 MHz
+            'slot_duration': 20,  # microseconds
+            'SIFS': 10,
+            'snr_threshold': 6}
 
         # IEEE 802.11g
 
@@ -73,7 +75,7 @@ class IeeeStandard:
         - The relationship between different bit rates and SNR threshold:
         |--------------|-------------------|-----------------|
         |   Bit rate   |  Modulation mode  |  SNR threshold  |
-        |   6 Mbps     |      BPSK         |      4 dB      |
+        |   6 Mbps     |      BPSK         |      4 dB       |
         |   9 Mbps     |      BPSK         |      5.5 dB     |
         |   12 Mbps    |      QPSK         |      7 dB       |
         |   18 Mbps    |      QPSK         |      8.5 dB     |
@@ -83,9 +85,10 @@ class IeeeStandard:
         |   54 Mbps    |      64-QAM       |      21 dB      |
         """
 
-        self.g_802_11 = {'carrier_frequency': 2.4 * 1e9,  # 2.4 GHz
-                  'bit_rate': 54 * 1e6,  # 54 Mbps
-                  'bandwidth': 20 * 1e6,  # 20 MHz
-                  'slot_duration': 9,  # microseconds
-                  'SIFS': 10,
-                  'snr_threshold': 21}
+        self.g_802_11 = {'mode': 'IEEE_802_11g',
+            'carrier_frequency': 2.4 * 1e9,  # 2.4 GHz
+            'bit_rate': 54 * 1e6,  # 54 Mbps
+            'bandwidth': 20 * 1e6,  # 20 MHz
+            'slot_duration': 9,  # microseconds
+            'SIFS': 10,
+            'snr_threshold': 21}
