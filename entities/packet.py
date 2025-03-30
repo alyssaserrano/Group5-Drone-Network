@@ -19,23 +19,26 @@ class Packet:
         time_delivery: the time at which the packet arrives at its destination
         time_transmitted_at_last_hop: the transmitting time at last drone
         transmission_mode: unicast or multicast or broadcast?
+        channel_id: the identity of the channel that used to transmit this packet
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
-    Updated at: 2025/1/23
+    Updated at: 2025/3/30
     """
 
     def __init__(self,
                  packet_id,
                  packet_length,
                  creation_time,
-                 simulator):
+                 simulator,
+                 channel_id):
 
         self.packet_id = packet_id
         self.packet_length = packet_length
         self.creation_time = creation_time
         self.deadline = config.PACKET_LIFETIME
         self.simulator = simulator
+        self.channel_id = channel_id
         self.__ttl = 0
 
         self.number_retransmission_attempt = {}
@@ -73,7 +76,7 @@ class DataPacket(Packet):
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
-    Updated at: 2024/5/4
+    Updated at: 2025/3/30
     """
 
     def __init__(self,
@@ -82,8 +85,9 @@ class DataPacket(Packet):
                  creation_time,
                  data_packet_id,
                  data_packet_length,
-                 simulator):
-        super().__init__(data_packet_id, data_packet_length, creation_time, simulator)
+                 simulator,
+                 channel_id):
+        super().__init__(data_packet_id, data_packet_length, creation_time, simulator, channel_id)
 
         self.src_drone = src_drone
         self.dst_drone = dst_drone
@@ -100,8 +104,9 @@ class AckPacket(Packet):
                  ack_packet_length,
                  ack_packet,
                  simulator,
+                 channel_id,
                  creation_time=None):
-        super().__init__(ack_packet_id, ack_packet_length, creation_time, simulator)
+        super().__init__(ack_packet_id, ack_packet_length, creation_time, simulator, channel_id)
 
         self.src_drone = src_drone
         self.dst_drone = dst_drone
