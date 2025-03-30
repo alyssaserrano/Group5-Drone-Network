@@ -7,8 +7,9 @@ class QGeoHelloPacket(Packet):
                  creation_time,
                  id_hello_packet,
                  hello_packet_length,
-                 simulator):
-        super().__init__(id_hello_packet, hello_packet_length, creation_time, simulator)
+                 simulator,
+                 channel_id):
+        super().__init__(id_hello_packet, hello_packet_length, creation_time, simulator, channel_id)
 
         self.src_drone = src_drone
         self.cur_position = src_drone.coords
@@ -26,9 +27,10 @@ class QGeoAckPacket(Packet):
                  reward,
                  max_q,
                  simulator,
+                 channel_id,
                  creation_time=None
                  ):
-        super().__init__(ack_packet_id, ack_packet_length, creation_time, simulator)
+        super().__init__(ack_packet_id, ack_packet_length, creation_time, simulator, channel_id)
 
         self.src_drone = src_drone
         self.src_coords = src_drone.coords
