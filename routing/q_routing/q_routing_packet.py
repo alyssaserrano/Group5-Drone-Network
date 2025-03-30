@@ -7,8 +7,9 @@ class QRoutingHelloPacket(Packet):
                  creation_time,
                  id_hello_packet,
                  hello_packet_length,
-                 simulator):
-        super().__init__(id_hello_packet, hello_packet_length, creation_time, simulator)
+                 simulator,
+                 channel_id):
+        super().__init__(id_hello_packet, hello_packet_length, creation_time, simulator, channel_id)
 
         self.src_drone = src_drone
         self.cur_position = src_drone.coords
@@ -25,9 +26,10 @@ class QRoutingAckPacket(Packet):
                  queuing_delay,
                  min_q,
                  simulator,
+                 channel_id,
                  creation_time=None
                  ):
-        super().__init__(ack_packet_id, ack_packet_length, creation_time, simulator)
+        super().__init__(ack_packet_id, ack_packet_length, creation_time, simulator, channel_id)
 
         self.src_drone = src_drone
         self.dst_drone = dst_drone

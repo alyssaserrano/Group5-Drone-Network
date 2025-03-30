@@ -2,6 +2,7 @@ import copy
 import random
 import logging
 from entities.packet import DataPacket
+from topology.virtual_force.vf_packet import VfPacket
 from routing.q_routing.q_routing_packet import QRoutingHelloPacket, QRoutingAckPacket
 from routing.q_routing.q_routing_table import QRoutingTable
 from utils import config
@@ -55,7 +56,7 @@ class QRouting:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/8/20
-    Updated at: 2025/3/27
+    Updated at: 2025/3/30
 
     """
 
@@ -72,11 +73,16 @@ class QRouting:
 
     def broadcast_hello_packet(self, my_drone):
         config.GL_ID_HELLO_PACKET += 1
+
+        # channel assignment
+        channel_id = self.my_drone.channel_assigner.channel_assign()
+
         hello_pkd = QRoutingHelloPacket(src_drone=my_drone,
                                         creation_time=self.simulator.env.now,
                                         id_hello_packet=config.GL_ID_HELLO_PACKET,
                                         hello_packet_length=config.HELLO_PACKET_LENGTH,
-                                        simulator=self.simulator)
+                                        simulator=self.simulator,
+                                        channel_id=channel_id)
         hello_pkd.transmission_mode = 1
 
         logging.info('At time: %s, UAV: %s has hello packet to broadcast',
@@ -94,8 +100,12 @@ class QRouting:
     def next_hop_selection(self, packet):
         """
         Select the next hop according to the routing protocol
-        :param packet: the data packet that needs to be sent
-        :return: next hop drone
+
+        Parameters:
+            packet: the data packet that needs to be sent
+
+        Returns:
+            Next hop drone
         """
         enquire = False
         has_route = True
@@ -123,9 +133,10 @@ class QRouting:
 
         since different routing protocols have their own corresponding packets, it is necessary to add this packet
         reception function in the network layer
-        :param packet: the received packet
-        :param src_drone_id: previous hop
-        :return: none
+
+        Parameters:
+            packet: the received packet
+            src_drone_id: previous hop
         """
 
         current_time = self.simulator.env.now
@@ -164,7 +175,8 @@ class QRouting:
                                                transmitting_start_time=packet_copy.transmitting_start_time,
                                                queuing_delay=waiting_time,
                                                min_q=min_q,
-                                               simulator=self.simulator)
+                                               simulator=self.simulator,
+                                               channel_id=packet_copy.channel_id)
 
                 yield self.simulator.env.timeout(config.SIFS_DURATION)  # switch from receiving to transmitting
 
@@ -196,7 +208,8 @@ class QRouting:
                                                    transmitting_start_time=packet_copy.transmitting_start_time,
                                                    queuing_delay=waiting_time,
                                                    min_q=min_q,
-                                                   simulator=self.simulator)
+                                                   simulator=self.simulator,
+                                                   channel_id=packet_copy.channel_id)
 
                     yield self.simulator.env.timeout(config.SIFS_DURATION)  # switch from receiving to transmitting
 
@@ -227,6 +240,28 @@ class QRouting:
 
                     self.my_drone.mac_protocol.wait_ack_process_finish[key2] = 1  # mark it as "finished"
                     self.my_drone.mac_protocol.wait_ack_process_dict[key2].interrupt()
+
+        elif isinstance(packet, VfPacket):
+            logging.info('At time %s, UAV: %s receives the vf hello msg from UAV: %s, pkd id is: %s',
+                         self.simulator.env.now, self.my_drone.identifier, src_drone_id, packet.packet_id)
+
+            # update the neighbor table
+            self.my_drone.motion_controller.neighbor_table.add_neighbor(packet, current_time)
+
+            if packet.msg_type == 'hello':
+                config.GL_ID_VF_PACKET += 1
+
+                ack_packet = VfPacket(src_drone=self.my_drone,
+                                      creation_time=self.simulator.env.now,
+                                      id_hello_packet=config.GL_ID_VF_PACKET,
+                                      hello_packet_length=config.HELLO_PACKET_LENGTH,
+                                      simulator=self.simulator,
+                                      channel_id=packet.channel_id)
+                ack_packet.msg_type = 'ack'
+
+                self.my_drone.transmitting_queue.put(ack_packet)
+            else:
+                pass
 
     def update_q_table(self, packet, next_hop_id):
         data_packet_acked = packet.ack_packet
