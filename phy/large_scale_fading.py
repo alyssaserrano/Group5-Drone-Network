@@ -15,10 +15,14 @@ logging.basicConfig(filename='running_log.log',
 def sinr_calculator(my_drone, main_drones_list, all_transmitting_drones_list):
     """
     calculate signal to signal-to-interference-plus-noise ratio
-    :param my_drone: receiver drone
-    :param main_drones_list: list of drones that wants to transmit packet to receiver
-    :param all_transmitting_drones_list: list of all drones currently transmitting packet
-    :return: list of sinr of each main drone
+
+    Parameters:
+        my_drone: receiver drone
+        main_drones_list: list of drones that wants to transmit packet to receiver
+        all_transmitting_drones_list: list of all drones currently transmitting packet
+
+    Returns:
+        List of sinr of each main drone
     """
 
     simulator = my_drone.simulator
@@ -29,32 +33,36 @@ def sinr_calculator(my_drone, main_drones_list, all_transmitting_drones_list):
     receiver = my_drone
 
     logging.info('Main node list: %s', main_drones_list)
-    for transmitter_id in main_drones_list:
-        transmitter = simulator.drones[transmitter_id]
-        interference_list = all_transmitting_drones_list[:]
-        interference_list.remove(transmitter_id)
+
+    for pair in main_drones_list:  # each pair includes the main drone id and the channel id
+        main_drone_id = pair[0]  # drone id of main transmitter
+        channel_id = pair[1]  # channel id of main transmitter
+        transmitter = simulator.drones[main_drone_id]
+
+        interference_list = [x[0] for x in all_transmitting_drones_list]
+        channel_list = [x[1] for x in all_transmitting_drones_list]
 
         main_link_path_loss = general_path_loss(receiver, transmitter)
         receive_power = transmit_power * main_link_path_loss
         interference_power = 0
 
-        if len(interference_list) != 0:
-            logging.info('Has interference')
-            # my_drone.simulator.metrics.collision_num += 1
-            for interference_id in interference_list:
-                interference = simulator.drones[interference_id]
+        for i in range(0, len(interference_list)):
+            if interference_list[i] != main_drone_id:  # possible interference
+                if my_drone.channel_assigner.adjacent_channel_interference_check(channel_id, channel_list[i]):
+                    interference = simulator.drones[interference_list[i]]
 
-                logging.info('Main node is: %s, interference node is: %s, distance between them is: %s, main link' 
-                             ' distance is: %s, interference link distance is: %s',
-                             transmitter_id, interference_id, euclidean_distance_3d(transmitter.coords, interference.coords),
-                             euclidean_distance_3d(transmitter.coords, receiver.coords),
-                             euclidean_distance_3d(interference.coords, receiver.coords))
+                    logging.info('Main node is: %s, interference node is: %s, distance between them is: %s, '
+                        'main link distance is: %s, interference link distance is: %s',
+                        main_drone_id, interference_list[i],
+                        euclidean_distance_3d(transmitter.coords, interference.coords),
+                        euclidean_distance_3d(transmitter.coords, receiver.coords),
+                        euclidean_distance_3d(interference.coords, receiver.coords))
 
-                interference_link_path_loss = general_path_loss(receiver, interference)
-                interference_power += transmit_power * interference_link_path_loss
-        else:
-            logging.info('No interference, main link distance is: %s',
-                         euclidean_distance_3d(transmitter.coords, receiver.coords))
+                    interference_link_path_loss = general_path_loss(receiver, interference)
+                    interference_power += transmit_power * interference_link_path_loss
+                else:
+                    # it means that two sub-channel is non-overlapping
+                    pass
 
         sinr = 10 * math.log10(receive_power / (noise_power + interference_power))
         logging.info('The SINR of main link is: %s', sinr)
@@ -65,15 +73,18 @@ def sinr_calculator(my_drone, main_drones_list, all_transmitting_drones_list):
 
 def general_path_loss(receiver, transmitter):
     """
-    general path loss model of line-of-sight (LoS) channels without system loss
+    General path loss model of line-of-sight (LoS) channels without system loss
 
     References:
         [1] J. Sabzehali, et al., "Optimizing number, placement, and backhaul connectivity of multi-UAV networks," in
             IEEE Internet of Things Journal, vol. 9, no. 21, pp. 21548-21560, 2022.
 
-    :param receiver: the drone that receives the packet
-    :param transmitter: the drone that sends the packet
-    :return: path loss
+    Parameters:
+        receiver: the drone that receives the packet
+        transmitter: the drone that sends the packet
+
+    Returns:
+        path loss
     """
 
     c = config.LIGHT_SPEED
@@ -99,9 +110,12 @@ def probabilistic_los_path_loss(receiver, transmitter):
         [2] J. Sabzehali, et al., "Optimizing number, placement, and backhaul connectivity of multi-UAV networks," in
             IEEE Internet of Things Journal, vol. 9, no. 21, pp. 21548-21560, 2022.
 
-    :param receiver: the drone that receives the packet
-    :param transmitter: the drone that sends the packet
-    :return: path loss
+    Parameters:
+        receiver: the drone that receives the packet
+        transmitter: the drone that sends the packet
+
+    Returns:
+        path loss
     """
 
     c = config.LIGHT_SPEED
