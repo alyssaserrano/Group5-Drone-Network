@@ -89,7 +89,7 @@ class SimulationVisualizer:
             result = original_unicast_put(message, dst_drone_id)
             
             # Record communication event
-            packet, _, src_drone_id, _ = message
+            packet, _, src_drone_id, _, _ = message
             
             # Add packet type differentiation
             packet_id = packet.packet_id
