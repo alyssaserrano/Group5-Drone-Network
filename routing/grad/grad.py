@@ -229,15 +229,12 @@ class Grad:
             if packet.msg_type == 'hello':
                 config.GL_ID_VF_PACKET += 1
 
-                # channel assignment
-                channel_id = self.my_drone.channel_assigner.channel_assign()
-
                 ack_packet = VfPacket(src_drone=self.my_drone,
                                       creation_time=self.simulator.env.now,
                                       id_hello_packet=config.GL_ID_VF_PACKET,
                                       hello_packet_length=config.HELLO_PACKET_LENGTH,
                                       simulator=self.simulator,
-                                      channel_id=channel_id)
+                                      channel_id=packet.channel_id)
                 ack_packet.msg_type = 'ack'
 
                 self.my_drone.transmitting_queue.put(ack_packet)
