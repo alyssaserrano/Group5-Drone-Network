@@ -18,11 +18,9 @@ class Phy:
         env: simulation environment created by simpy
         my_drone: the drone that installed the physical protocol
 
-    Future work: take co-channel interference into account, calculate the SINR before receiving the packet
-
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
-    Updated at: 2024/4/25
+    Updated at: 2025/3/30
     """
 
     def __init__(self, mac):
@@ -33,9 +31,10 @@ class Phy:
     def unicast(self, packet, next_hop_id):
         """
         Unicast packet through the wireless channel
-        :param packet: the data packet or ACK packet that needs to be transmitted
-        :param next_hop_id: the identifier of the next hop drone
-        :return: none
+
+        Parameters:
+            packet: the data packet or ACK packet that needs to be transmitted
+            next_hop_id: the identifier of the next hop drone
         """
 
         # energy consumption
@@ -43,15 +42,16 @@ class Phy:
         self.my_drone.residual_energy -= energy_consumption
 
         # transmit through the channel
-        message = [packet, self.env.now, self.my_drone.identifier, 0]
+        message = [packet, self.env.now, self.my_drone.identifier, 0, packet.channel_id]
 
         self.my_drone.simulator.channel.unicast_put(message, next_hop_id)
 
     def broadcast(self, packet):
         """
         Broadcast packet through the wireless channel
-        :param packet: tha packet (hello packet, etc.) that needs to be broadcast
-        :return: none
+
+        Parameters:
+        packet: tha packet (hello packet, etc.) that needs to be broadcast
         """
 
         # energy consumption
@@ -59,16 +59,17 @@ class Phy:
         self.my_drone.residual_energy -= energy_consumption
 
         # transmit through the channel
-        message = [packet, self.env.now, self.my_drone.identifier, 0]
+        message = [packet, self.env.now, self.my_drone.identifier, 0, packet.channel_id]
 
         self.my_drone.simulator.channel.broadcast_put(message)
 
     def multicast(self, packet, dst_id_list):
         """
         Multicast packet through the wireless channel
-        :param packet: tha packet that needs to be multicasted
-        :param dst_id_list: list of ids for multicast destinations
-        :return: none
+
+        Parameters:
+            packet: tha packet that needs to be multicasted
+            dst_id_list: list of ids for multicast destinations
         """
 
         # a transmission delay should be considered
@@ -79,6 +80,6 @@ class Phy:
         self.my_drone.residual_energy -= energy_consumption
 
         # transmit through the channel
-        message = [packet, self.env.now, self.my_drone.identifier]
+        message = [packet, self.env.now, self.my_drone.identifier, packet.channel_id]
 
         self.my_drone.simulator.channel.multicast_put(message, dst_id_list)
