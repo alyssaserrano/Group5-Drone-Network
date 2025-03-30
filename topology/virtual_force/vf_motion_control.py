@@ -83,11 +83,16 @@ class VfMotionController:
 
     def initialization(self):
         config.GL_ID_VF_PACKET += 1
+
+        # channel assignment
+        channel_id = self.my_drone.channel_assigner.channel_assign()
+
         hello_msg = VfPacket(src_drone=self.my_drone,
                              creation_time=self.simulator.env.now,
                              id_hello_packet=config.GL_ID_VF_PACKET,
                              hello_packet_length=config.HELLO_PACKET_LENGTH,
-                             simulator=self.simulator)
+                             simulator=self.simulator,
+                             channel_id=channel_id)
         hello_msg.transmission_mode = 1
 
         logging.info('At time: %s, UAV: %s has motion control hello packet to broadcast, pkd_id is: %s',
@@ -132,11 +137,16 @@ class VfMotionController:
             # judge if the drone has reach the target waypoint
             if euclidean_distance_3d(next_pos, self.next_position) < 20:
                 config.GL_ID_VF_PACKET += 1
+
+                # channel assignment
+                channel_id = self.my_drone.channel_assigner.channel_assign()
+
                 hello_msg = VfPacket(src_drone=self.my_drone,
                                      creation_time=self.simulator.env.now,
                                      id_hello_packet=config.GL_ID_VF_PACKET,
                                      hello_packet_length=config.HELLO_PACKET_LENGTH,
-                                     simulator=self.simulator)
+                                     simulator=self.simulator,
+                                     channel_id=channel_id)
 
                 hello_msg.transmission_mode = 1
 
