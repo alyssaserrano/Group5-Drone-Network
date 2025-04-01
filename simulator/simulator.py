@@ -1,10 +1,10 @@
 import random
-import numpy as np
 from phy.channel import Channel
 from entities.drone import Drone
 from simulator.metrics import Metrics
 from mobility import start_coords
 from utils import config
+from allocation.central_controller import CentralController
 from visualization.scatter import scatter_plot
 
 
@@ -23,7 +23,7 @@ class Simulator:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
-    Updated at: 2024/8/16
+    Updated at: 2025/4/1
     """
 
     def __init__(self,
@@ -43,6 +43,9 @@ class Simulator:
 
         self.metrics = Metrics(self)  # use to record the network performance
 
+        # NOTE: if distributed optimization is adopted, remember to comment this to speed up simulation
+        # self.central_controller = CentralController(self)
+
         start_position = start_coords.get_random_start_point_3d(seed)
 
         self.drones = []
@@ -50,7 +53,7 @@ class Simulator:
             if config.HETEROGENEOUS:
                 speed = random.randint(5, 60)
             else:
-                speed = 50
+                speed = 10
 
             print('UAV: ', i, ' initial location is at: ', start_position[i], ' speed is: ', speed)
             drone = Drone(env=env, node_id=i, coords=start_position[i], speed=speed,
