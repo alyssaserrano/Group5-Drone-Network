@@ -33,7 +33,7 @@ class GaussMarkov3D:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/17
-    Updated at: 2025/1/7
+    Updated at: 2025/4/12
     """
 
     def __init__(self, drone):
@@ -158,9 +158,9 @@ class GaussMarkov3D:
             z = np.array(z)
 
             ax.plot(x, y, z)
-            ax.set_xlabel('x')
-            ax.set_ylabel('y')
-            ax.set_zlabel('z')
+            ax.set_xlabel('X (m)')
+            ax.set_ylabel('Y (m)')
+            ax.set_zlabel('Z (m)')
             plt.show()
 
     # rebound scheme (refer to ns-3)

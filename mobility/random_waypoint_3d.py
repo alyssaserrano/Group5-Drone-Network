@@ -17,7 +17,7 @@ class RandomWaypoint3D:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/4/19
-    Updated at: 2025/1/7
+    Updated at: 2025/4/12
     """
 
     def __init__(self, drone):
@@ -44,6 +44,9 @@ class RandomWaypoint3D:
         self.waypoint_spacing_z = 50
         self.waypoint_coords = []
         self.waypoint_generator(self.my_drone.coords)
+
+        # determine if the waypoint is reached
+        self.arrival_flag = 3
 
         # used to determine if the waypoint has been visited
         self.waypoint_visited = [0 for _ in range(self.waypoint_num)]
@@ -122,7 +125,7 @@ class RandomWaypoint3D:
                 self.trajectory.append(next_position)
 
             # judge if the drone has reach the target waypoint
-            if euclidean_distance_3d(next_position, target_waypoint) < 20:
+            if euclidean_distance_3d(next_position, target_waypoint) < self.arrival_flag:
                 self.waypoint_visited[target_waypoint_idx] = 1
                 yield env.timeout(self.pause_time)
 
@@ -159,9 +162,9 @@ class RandomWaypoint3D:
             z = np.array(z)
 
             ax.plot(x, y, z)
-            ax.set_xlabel('x')
-            ax.set_ylabel('y')
-            ax.set_zlabel('z')
+            ax.set_xlabel('X (m)')
+            ax.set_ylabel('Y (m)')
+            ax.set_zlabel('Z (m)')
             plt.show()
 
 

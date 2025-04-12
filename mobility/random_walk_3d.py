@@ -145,9 +145,9 @@ class RandomWalk3D:
             z = np.array(z)
 
             ax.plot(x, y, z)
-            ax.set_xlabel('x')
-            ax.set_ylabel('y')
-            ax.set_zlabel('z')
+            ax.set_xlabel('X (m)')
+            ax.set_ylabel('Y (m)')
+            ax.set_zlabel('Z (m)')
             plt.show()
 
     # rebound scheme
