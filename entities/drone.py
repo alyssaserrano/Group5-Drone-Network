@@ -30,8 +30,6 @@ logging.basicConfig(filename='running_log.log',
                     level=config.LOGGING_LEVEL
                     )
 
-GLOBAL_DATA_PACKET_ID = 0
-
 
 class Drone:
     """
@@ -79,7 +77,7 @@ class Drone:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
-    Updated at: 2025/3/30
+    Updated at: 2025/4/14
     """
 
     def __init__(self,
@@ -148,8 +146,6 @@ class Drone:
             traffic_pattern: characterize the time interval between generating data packets
         """
 
-        global GLOBAL_DATA_PACKET_ID
-
         while True:
             if not self.sleep:
                 if traffic_pattern == 'Uniform':
@@ -161,10 +157,10 @@ class Drone:
                     interval of data packets follows exponential distribution
                     """
 
-                    rate = 2  # on average, how many packets are generated in 1s
+                    rate = 5  # on average, how many packets are generated in 1s
                     yield self.env.timeout(round(self.rng_drone.expovariate(rate) * 1e6))
 
-                GLOBAL_DATA_PACKET_ID += 1  # data packet id
+                config.GL_ID_DATA_PACKET += 1  # data packet id
 
                 # randomly choose a destination
                 all_candidate_list = [i for i in range(config.NUMBER_OF_DRONES)]
@@ -188,7 +184,7 @@ class Drone:
                 pkd = DataPacket(self,
                                  dst_drone=destination,
                                  creation_time=self.env.now,
-                                 data_packet_id=GLOBAL_DATA_PACKET_ID,
+                                 data_packet_id=config.GL_ID_DATA_PACKET,
                                  data_packet_length=data_packet_length,
                                  simulator=self.simulator,
                                  channel_id=channel_id)
