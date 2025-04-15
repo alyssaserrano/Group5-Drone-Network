@@ -1,18 +1,11 @@
 import copy
 import random
-import logging
+from simulator.log import logger
 from entities.packet import DataPacket
 from topology.virtual_force.vf_packet import VfPacket
 from routing.q_routing.q_routing_packet import QRoutingHelloPacket, QRoutingAckPacket
 from routing.q_routing.q_routing_table import QRoutingTable
 from utils import config
-
-# config logging
-logging.basicConfig(filename='running_log.log',
-                    filemode='w',  # there are two modes: 'a' and 'w'
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    level=config.LOGGING_LEVEL
-                    )
 
 
 class QRouting:
@@ -56,7 +49,7 @@ class QRouting:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/8/20
-    Updated at: 2025/3/30
+    Updated at: 2025/4/15
 
     """
 
@@ -85,8 +78,8 @@ class QRouting:
                                         channel_id=channel_id)
         hello_pkd.transmission_mode = 1
 
-        logging.info('At time: %s, UAV: %s has hello packet to broadcast',
-                     self.simulator.env.now, self.my_drone.identifier)
+        logger.info('At time: %s (us) ---- UAV: %s broadcast a hello packet to announce broken links',
+                    self.simulator.env.now, self.my_drone.identifier)
 
         self.simulator.metrics.control_packet_num += 1
         self.my_drone.transmitting_queue.put(hello_pkd)
@@ -147,8 +140,6 @@ class QRouting:
             packet_copy = copy.copy(packet)
 
             packet_copy.previous_drone = self.simulator.drones[src_drone_id]
-            logging.info('~~~Packet: %s is received by UAV: %s at: %s',
-                         packet_copy.packet_id, self.my_drone.identifier, self.simulator.env.now)
 
             if packet_copy.dst_drone.identifier == self.my_drone.identifier:
                 if packet_copy.packet_id not in self.simulator.metrics.datapacket_arrived:
@@ -157,8 +148,8 @@ class QRouting:
                     self.simulator.metrics.throughput_dict[packet_copy.packet_id] = packet_copy.packet_length / (latency / 1e6)
                     self.simulator.metrics.hop_cnt_dict[packet_copy.packet_id] = packet_copy.get_current_ttl()
                     self.simulator.metrics.datapacket_arrived.add(packet_copy.packet_id)
-                    logging.info('Packet: %s is received by destination UAV: %s',
-                                 packet_copy.packet_id, self.my_drone.identifier)
+                    logger.info('At time: %s (us) ---- Data packet: %s is received by destination UAV: %s',
+                                self.simulator.env.now, packet_copy.packet_id, self.my_drone.identifier)
 
                 # waiting time includes queuing delay and access delay
                 waiting_time = packet_copy.transmitting_start_time - packet_copy.waiting_start_time
@@ -190,6 +181,9 @@ class QRouting:
                     pass
             else:
                 if self.my_drone.transmitting_queue.qsize() < self.my_drone.max_queue_size:
+                    logger.info('At time: %s (us) ---- Data packet: %s is received by next hop UAV: %s',
+                                self.simulator.env.now, packet_copy.packet_id, self.my_drone.identifier)
+
                     self.my_drone.transmitting_queue.put(packet_copy)
                     packet_copy.waiting_start_time = self.simulator.env.now  # this packet starts to wait in the queue
 
@@ -235,15 +229,15 @@ class QRouting:
 
             if self.my_drone.mac_protocol.wait_ack_process_finish[key2] == 0:
                 if not self.my_drone.mac_protocol.wait_ack_process_dict[key2].triggered:
-                    logging.info('At time: %s, the wait_ack process (id: %s) of UAV: %s is interrupted by UAV: %s',
-                                 self.simulator.env.now, key2, self.my_drone.identifier, src_drone_id)
+                    logger.info('At time: %s (us) ---- wait_ack process (id: %s) of UAV: %s is interrupted by UAV: %s',
+                                self.simulator.env.now, key2, self.my_drone.identifier, src_drone_id)
 
                     self.my_drone.mac_protocol.wait_ack_process_finish[key2] = 1  # mark it as "finished"
                     self.my_drone.mac_protocol.wait_ack_process_dict[key2].interrupt()
 
         elif isinstance(packet, VfPacket):
-            logging.info('At time %s, UAV: %s receives the vf hello msg from UAV: %s, pkd id is: %s',
-                         self.simulator.env.now, self.my_drone.identifier, src_drone_id, packet.packet_id)
+            logger.info('At time: %s (us) ---- UAV: %s receives the vf hello msg from UAV: %s, pkd id is: %s',
+                        self.simulator.env.now, self.my_drone.identifier, src_drone_id, packet.packet_id)
 
             # update the neighbor table
             self.my_drone.motion_controller.neighbor_table.add_neighbor(packet, current_time)
@@ -274,9 +268,6 @@ class QRouting:
 
         self.simulator.metrics.mac_delay.append((self.simulator.env.now - data_packet_acked.first_attempt_time) / 1e3)
 
-        logging.info('Data packet id: %s, real transmission delay is: %s',
-                     data_packet_acked.packet_id, transmission_delay)
-
         min_q = packet.min_q
 
         # calculate reward function
@@ -288,9 +279,6 @@ class QRouting:
         self.table.q_table[next_hop_id][dst_drone.identifier] = \
             (1 - self.learning_rate) * self.table.q_table[next_hop_id][dst_drone.identifier] + \
             self.learning_rate * (waiting_time + transmission_delay + (1 - f) * min_q)
-
-        logging.info('The Q-table in UAV: %s is: %s',
-                     self.my_drone.identifier, self.table.q_table)
 
     def check_waiting_list(self):
         while True:

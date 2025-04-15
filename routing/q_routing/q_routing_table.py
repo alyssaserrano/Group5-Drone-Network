@@ -10,7 +10,7 @@ class QRoutingTable:
         self.my_drone = my_drone
         self.neighbor_table = defaultdict(list)
         self.q_table = 30000 * np.ones((my_drone.simulator.n_drones, my_drone.simulator.n_drones))  # initialization
-        self.entry_life_time = 2.5 * 1e6  # unit: us
+        self.entry_life_time = 2 * 1e6  # unit: us
         self.rng_routing = rng_routing
 
     # determine if the neighbor table is empty
