@@ -1,16 +1,9 @@
 import copy
-import logging
+from simulator.log import logger
 from routing.grad.grad_packet import GradMessage
 from topology.virtual_force.vf_packet import VfPacket
 from routing.grad.grad_cost_table import GradCostTable
 from utils import config
-
-# config logging
-logging.basicConfig(filename='running_log.log',
-                    filemode='w',  # there are two modes: 'a' and 'w'
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    level=config.LOGGING_LEVEL
-                    )
 
 
 class Grad:
@@ -48,7 +41,7 @@ class Grad:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/4/20
-    Updated at: 2025/3/27
+    Updated at: 2025/4/15
     """
 
     def __init__(self, simulator, my_drone):
@@ -131,8 +124,9 @@ class Grad:
 
             if msg_type == "M_REQUEST":
                 if self.my_drone.identifier is target.identifier:
-                    logging.info('At time: %s, UAV: %s receives a REQUEST message from UAV: %s, and REPLY should be'
-                                 'launched.', self.simulator.env.now, self.my_drone.identifier, src_drone_id)
+                    logger.info('At time: %s (us) ---- UAV: %s receives a REQUEST message from UAV: %s, and REPLY '
+                                'message should be launched.',
+                                self.simulator.env.now, self.my_drone.identifier, src_drone_id)
 
                     # response the request
                     config.GL_ID_GRAD_MESSAGE += 1
@@ -159,8 +153,8 @@ class Grad:
                     self.my_drone.transmitting_queue.put(grad_message)
 
                 else:
-                    logging.info('At time: %s, UAV: %s receives a REQUEST message from UAV: %s',
-                                 self.simulator.env.now, self.my_drone.identifier, src_drone_id)
+                    logger.info('At time: %s (us) ---- UAV: %s receives a REQUEST message from UAV: %s',
+                                self.simulator.env.now, self.my_drone.identifier, src_drone_id)
 
                     if packet_copy.remaining_value > 0:
                         if packet_copy.packet_id not in self.flag.keys():  # it is the first time to receive this message
@@ -178,18 +172,21 @@ class Grad:
                         self.simulator.metrics.throughput_dict[data_packet.packet_id] = packet_copy.packet_length / (latency / 1e6)
                         self.simulator.metrics.hop_cnt_dict[data_packet.packet_id] = packet_copy.get_current_ttl()
                         self.simulator.metrics.datapacket_arrived.add(data_packet.packet_id)
-                        logging.info('Packet: %s is received by destination UAV: %s',
-                                     data_packet.packet_id, self.my_drone.identifier)
+                        logger.info('At time: %s (us) ---- Data packet: %s is received by destination UAV: %s',
+                                    self.simulator.env.now, data_packet.packet_id, self.my_drone.identifier)
                 else:
-                    if packet_copy.remaining_value > 0:
-                        # not all the drones hearing this message have entries related to the destination
-                        if self.cost_table.has_entry(data_packet.dst_drone.identifier):
-                            est_cost = self.cost_table.get_est_cost(data_packet.dst_drone.identifier)
-                            if est_cost <= packet_copy.remaining_value:
-                                logging.info('At time: %s, UAV: %s further forward the data packet',
-                                             self.simulator.env.now, self.my_drone.identifier)
+                    if self.my_drone.transmitting_queue.qsize() < self.my_drone.max_queue_size:
+                        if packet_copy.remaining_value > 0:
+                            # not all the drones hearing this message have entries related to the destination
+                            if self.cost_table.has_entry(data_packet.dst_drone.identifier):
+                                est_cost = self.cost_table.get_est_cost(data_packet.dst_drone.identifier)
+                                if est_cost <= packet_copy.remaining_value:
+                                    logger.info('At time: %s (us) ---- UAV: %s further forward the data packet',
+                                                self.simulator.env.now, self.my_drone.identifier)
 
-                                self.my_drone.transmitting_queue.put(packet_copy)
+                                    self.my_drone.transmitting_queue.put(packet_copy)
+                            else:
+                                pass
                         else:
                             pass
                     else:
@@ -197,8 +194,8 @@ class Grad:
 
             elif msg_type == "M_REPLY":
                 if self.my_drone.identifier is packet_copy.target.identifier:
-                    logging.info('At time: %s, UAV: %s receives the REPLY message originates from UAV: %s',
-                                 self.simulator.env.now, self.my_drone.identifier, packet_copy.originator.identifier)
+                    logger.info('At time: %s (us) ---- UAV: %s receives the REPLY message originates from UAV: %s',
+                                self.simulator.env.now, self.my_drone.identifier, packet_copy.originator.identifier)
 
                     # this indicates that there is a path to dst_drone
                     for item in self.my_drone.waiting_list:
@@ -220,7 +217,7 @@ class Grad:
                         pass
 
         elif isinstance(packet, VfPacket):
-            logging.info('At time %s, UAV: %s receives the vf hello msg from UAV: %s, pkd id is: %s',
+            logger.info('At time: %s (us) ---- UAV: %s receives the vf hello msg from UAV: %s, pkd id is: %s',
                          self.simulator.env.now, self.my_drone.identifier, src_drone_id, packet.packet_id)
 
             # update the neighbor table
@@ -242,6 +239,6 @@ class Grad:
                 pass
 
         else:
-            logging.warning('Unknown message type!')
+            logger.warning('Unknown message type!')
 
         yield self.simulator.env.timeout(1)
