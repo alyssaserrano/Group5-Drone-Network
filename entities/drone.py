@@ -6,17 +6,8 @@ import queue
 from simulator.log import logger
 from entities.packet import DataPacket
 from routing.dsdv.dsdv import Dsdv
-from routing.greedy.greedy import Greedy
-from routing.grad.grad import Grad
-from routing.opar.opar import Opar
-from routing.q_routing.q_routing import QRouting
-from routing.qgeo.qgeo import QGeo
 from mac.csma_ca import CsmaCa
-from mac.pure_aloha import PureAloha
 from mobility.gauss_markov_3d import GaussMarkov3D
-from mobility.random_walk_3d import RandomWalk3D
-from mobility.random_waypoint_3d import RandomWaypoint3D
-from topology.virtual_force.vf_motion_control import VfMotionController
 from energy.energy_model import EnergyModel
 from allocation.channel_assignment import ChannelAssigner
 from utils import config
@@ -185,9 +176,8 @@ class Drone:
 
                 self.simulator.metrics.datapacket_generated_num += 1
 
-                logger.info('------> UAV: %s generates a data packet (id: %s, dst: %s) at: %s, qsize is: %s',
-                             self.identifier, pkd.packet_id, destination.identifier, self.env.now,
-                             self.transmitting_queue.qsize())
+                logger.info('At time: %s (us) ++++ UAV: %s generates a data packet (id: %s, dst: %s)',
+                            self.env.now, self.identifier, pkd.packet_id, destination.identifier)
 
                 pkd.waiting_start_time = self.env.now
 
@@ -250,8 +240,9 @@ class Drone:
                                     has_route, final_packet, enquire = self.routing_protocol.next_hop_selection(packet)
 
                                     if has_route:
-                                        logger.info('UAV: %s obtain the next hop: %s of data packet (id: %s)',
-                                                     self.identifier, packet.next_hop_id, packet.packet_id)
+                                        logger.info('At time: %s (us) ---- UAV: %s obtain the next hop: %s of data'
+                                                    ' packet (id: %s)',
+                                                    self.env.now, self.identifier, packet.next_hop_id, packet.packet_id)
 
                                         # in this case, the "final_packet" is actually the data packet
                                         yield self.env.process(self.packet_coming(final_packet))
@@ -284,22 +275,24 @@ class Drone:
 
         if not self.sleep:
             arrival_time = self.env.now
-            logger.info('Packet: %s waiting for UAV: %s buffer resource at: %s',
-                         pkd.packet_id, self.identifier, arrival_time)
+            logger.info('At time: %s (us) ---- Packet: %s starts waiting for UAV: %s buffer resource',
+                        arrival_time, pkd.packet_id, self.identifier)
 
             with self.buffer.request() as request:
                 yield request  # wait to enter to buffer
 
-                logger.info('Packet: %s has been added to the buffer at: %s of UAV: %s, waiting time is: %s',
-                             pkd.packet_id, self.env.now, self.identifier, self.env.now - arrival_time)
+                logger.info('At time: %s (us) ---- Packet: %s has been added to the buffer of UAV: %s, '
+                            'waiting time is: %s',
+                            self.env.now, pkd.packet_id, self.identifier, self.env.now - arrival_time)
 
                 pkd.number_retransmission_attempt[self.identifier] += 1
 
                 if pkd.number_retransmission_attempt[self.identifier] == 1:
                     pkd.time_transmitted_at_last_hop = self.env.now
 
-                logger.info('Re-transmission times of pkd: %s at UAV: %s is: %s',
-                             pkd.packet_id, self.identifier, pkd.number_retransmission_attempt[self.identifier])
+                logger.info('At time: %s (us) ---- Re-transmission attempts of pkd: %s at UAV: %s is: %s',
+                            self.env.now, pkd.packet_id, self.identifier,
+                            pkd.number_retransmission_attempt[self.identifier])
 
                 # every time the drone initiates a data packet transmission, "mac_process_count" will be increased by 1
                 self.mac_process_count += 1
@@ -387,12 +380,13 @@ class Drone:
                         if pkd.get_current_ttl() < config.MAX_TTL:
                             sender = all_drones_send_to_me[which_one][0]
 
-                            logger.info('Packet %s from UAV: %s is received by UAV: %s at time: %s, sinr is: %s',
-                                         pkd.packet_id, sender, self.identifier, self.simulator.env.now, max_sinr)
+                            logger.info('At time: %s (us) ---- Packet %s from UAV: %s is received by UAV: %s, sinr is: %s',
+                                        self.env.now, pkd.packet_id, sender, self.identifier, max_sinr)
 
                             yield self.env.process(self.routing_protocol.packet_reception(pkd, sender))
                         else:
-                            logger.info('Packet %s is dropped due to exceeding max TTL', pkd.packet_id)
+                            logger.info('At time: %s (us) ---- Packet %s is dropped due to exceeding max TTL',
+                                        self.env.now, pkd.packet_id)
                     else:  # sinr is lower than threshold
                         self.simulator.metrics.collision_num += len(sinr_list)
                         pass
