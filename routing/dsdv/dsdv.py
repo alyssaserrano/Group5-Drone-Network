@@ -1,18 +1,11 @@
 import copy
 import random
-import logging
+from simulator.log import logger
 from entities.packet import DataPacket, AckPacket
 from topology.virtual_force.vf_packet import VfPacket
 from routing.dsdv.dsdv_packet import DsdvHelloPacket
 from routing.dsdv.dsdv_routing_table import DsdvRoutingTable
 from utils import config
-
-# config logging
-logging.basicConfig(filename='running_log.log',
-                    filemode='w',  # there are two modes: 'a' and 'w'
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    level=config.LOGGING_LEVEL
-                    )
 
 
 class Dsdv:
@@ -40,7 +33,7 @@ class Dsdv:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/4/14
-    Updated at: 2025/3/30
+    Updated at: 2025/4/15
     """
 
     def __init__(self, simulator, my_drone):
@@ -85,7 +78,7 @@ class Dsdv:
                                             channel_id=channel_id)
                 hello_pkd.transmission_mode = 1  # broadcast
 
-                logging.info('At time: %s, UAV: %s broadcast a hello packet to announce broken links',
+                logger.info('At time: %s (us) ---- UAV: %s broadcast a hello packet to announce broken links',
                              self.simulator.env.now, self.my_drone.identifier)
 
                 self.simulator.metrics.control_packet_num += 1
@@ -108,7 +101,7 @@ class Dsdv:
                                     channel_id=channel_id)
         hello_pkd.transmission_mode = 1  # broadcast
 
-        logging.info('At time: %s, UAV: %s has hello packet to broadcast',
+        logger.info('At time: %s (us) ---- UAV: %s has a hello packet to broadcast',
                      self.simulator.env.now, self.my_drone.identifier)
 
         self.simulator.metrics.control_packet_num += 1
@@ -193,8 +186,8 @@ class Dsdv:
                 self.simulator.metrics.throughput_dict[packet_copy.packet_id] = packet_copy.packet_length / (latency / 1e6)
                 self.simulator.metrics.hop_cnt_dict[packet_copy.packet_id] = packet_copy.get_current_ttl()
                 self.simulator.metrics.datapacket_arrived.add(packet_copy.packet_id)
-                logging.info('Packet: %s is received by destination UAV: %s',
-                             packet_copy.packet_id, self.my_drone.identifier)
+                logger.info('At time: %s (us) ---- Data packet: %s is received by destination UAV: %s',
+                             self.simulator.env.now, packet_copy.packet_id, self.my_drone.identifier)
 
                 config.GL_ID_ACK_PACKET += 1
                 src_drone = self.simulator.drones[src_drone_id]  # previous drone
@@ -218,6 +211,9 @@ class Dsdv:
                     pass
             else:
                 if self.my_drone.transmitting_queue.qsize() < self.my_drone.max_queue_size:
+                    logger.info('At time: %s (us) ---- Data packet: %s is received by next hop UAV: %s',
+                                self.simulator.env.now, packet_copy.packet_id, self.my_drone.identifier)
+
                     self.my_drone.transmitting_queue.put(packet_copy)
 
                     config.GL_ID_ACK_PACKET += 1
@@ -254,14 +250,14 @@ class Dsdv:
 
             if self.my_drone.mac_protocol.wait_ack_process_finish[key2] == 0:
                 if not self.my_drone.mac_protocol.wait_ack_process_dict[key2].triggered:
-                    logging.info('At time: %s, the wait_ack process (id: %s) of UAV: %s is interrupted by UAV: %s',
+                    logger.info('At time: %s (us) ---- wait_ack process (id: %s) of UAV: %s is interrupted by UAV: %s',
                                  self.simulator.env.now, key2, self.my_drone.identifier, src_drone_id)
 
                     self.my_drone.mac_protocol.wait_ack_process_finish[key2] = 1  # mark it as "finished"
                     self.my_drone.mac_protocol.wait_ack_process_dict[key2].interrupt()
 
         elif isinstance(packet, VfPacket):
-            logging.info('At time %s, UAV: %s receives the vf hello msg from UAV: %s, pkd id is: %s',
+            logger.info('At time: %s (us) ---- UAV: %s receives the vf hello msg from UAV: %s, pkd id is: %s',
                          self.simulator.env.now, self.my_drone.identifier, src_drone_id, packet.packet_id)
 
             # update the neighbor table

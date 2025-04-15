@@ -1,14 +1,6 @@
-import logging
+from simulator.log import logger
 from utils import config
 from collections import defaultdict
-
-
-# config logging
-logging.basicConfig(filename='running_log.log',
-                    filemode='w',  # there are two modes: 'a' and 'w'
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    level=config.LOGGING_LEVEL
-                    )
 
 
 class DsdvRoutingTable:
@@ -34,7 +26,7 @@ class DsdvRoutingTable:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/4/14
-    Updated at: 2024/4/17
+    Updated at: 2025/4/15
     """
 
     def __init__(self, env, my_drone):
@@ -112,9 +104,9 @@ class DsdvRoutingTable:
 
     # print routing table
     def print_neighbor(self, my_drone):
-        logging.info('|----------Routing Table of: %s ----------|', my_drone.identifier)
+        logger.info('|----------Routing Table of: %s ----------|', my_drone.identifier)
         for key in self.routing_table.keys():
-            logging.info('Dst_id: %s, next hop is: %s, metric is: %s, seq_num (dst_id) is: %s, updated time is: %s',
+            logger.info('Dst_id: %s, next hop is: %s, metric is: %s, seq_num (dst_id) is: %s, updated time is: %s',
                          key, self.routing_table[key][0], self.routing_table[key][1], self.routing_table[key][2],
                          self.routing_table[key][3])
-        logging.info('|-----------------------------------------------------------------|')
+        logger.info('|-----------------------------------------------------------------|')
