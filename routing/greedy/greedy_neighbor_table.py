@@ -1,5 +1,4 @@
-import logging
-import math
+from simulator.log import logger
 from utils.util_function import euclidean_distance_3d
 from collections import defaultdict
 
@@ -22,14 +21,14 @@ class GreedyNeighborTable:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
-    Updated at: 2024/11/20
+    Updated at: 2025/4/15
     """
 
     def __init__(self, env, my_drone):
         self.env = env
         self.my_drone = my_drone
         self.neighbor_table = defaultdict(list)
-        self.entry_life_time = 1 * 1e6  # unit: us (1s)
+        self.entry_life_time = 2 * 1e6  # unit: us
         self.have_void_area = 1
 
     # determine if the neighbor table is empty
@@ -85,11 +84,11 @@ class GreedyNeighborTable:
 
     # print neighbor table
     def print_neighbor(self, my_drone):
-        logging.info('|----------Neighbor Table of: %s ----------|', my_drone.identifier)
+        logger.info('|----------Neighbor Table of: %s ----------|', my_drone.identifier)
         for key in self.neighbor_table:
-            logging.info('Neighbor: %s, position is: %s, updated time is: %s, ',
+            logger.info('Neighbor: %s, position is: %s, updated time is: %s, ',
                          key, self.neighbor_table[key][0], self.neighbor_table[key][1])
-        logging.info('|-----------------------------------------------------------------|')
+        logger.info('|-----------------------------------------------------------------|')
 
     # clear neighbor table
     def clear(self):
