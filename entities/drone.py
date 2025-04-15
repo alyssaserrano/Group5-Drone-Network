@@ -421,12 +421,13 @@ class Drone:
     def trigger(self):
         """
         Detects whether the drone has received a complete data packet
-        :return:
-        1. flag: bool variable, "1" means a complete data packet has been received by this drone and vice versa
-        2. all_drones_send_to_me: a list, including all the sender of the complete data packets received
-        3. time_span, a list, the element inside is the time interval in which the received complete data packet is
-           transmitted in the channel
-        4. potential_packet, a list, including all the instances of the received complete data packet
+
+        Returns:
+            flag: bool variable, "1" means a complete data packet has been received by this drone and vice versa
+            all_drones_send_to_me: a nested list, whose element is a list including sender id and the channel id
+            time_span: a nested list, whose element is a list including the time when the packet is transmitted and the
+                time when the packet reached
+            potential_packet: a list, including all the instances of the received complete data packet
         """
 
         flag = 0  # used to indicate if I receive a complete packet
