@@ -1,15 +1,7 @@
 import math
-import logging
+from simulator.log import logger
 from utils import config
 from utils.util_function import euclidean_distance_3d, euclidean_distance_2d
-
-
-# config logging
-logging.basicConfig(filename='running_log.log',
-                    filemode='w',  # there are two modes: 'a' and 'w'
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    level=logging.DEBUG
-                    )
 
 
 def sinr_calculator(my_drone, main_drones_list, all_transmitting_drones_list):
@@ -32,8 +24,6 @@ def sinr_calculator(my_drone, main_drones_list, all_transmitting_drones_list):
     sinr_list = []  # record the sinr of all transmitter
     receiver = my_drone
 
-    logging.info('Main node list: %s', main_drones_list)
-
     for pair in main_drones_list:  # each pair includes the main drone id and the channel id
         main_drone_id = pair[0]  # drone id of main transmitter
         channel_id = pair[1]  # channel id of main transmitter
@@ -51,12 +41,14 @@ def sinr_calculator(my_drone, main_drones_list, all_transmitting_drones_list):
                 if my_drone.channel_assigner.adjacent_channel_interference_check(channel_id, channel_list[i]):
                     interference = simulator.drones[interference_list[i]]
 
-                    logging.info('Main node is: %s, interference node is: %s, distance between them is: %s, '
-                        'main link distance is: %s, interference link distance is: %s',
-                        main_drone_id, interference_list[i],
-                        euclidean_distance_3d(transmitter.coords, interference.coords),
-                        euclidean_distance_3d(transmitter.coords, receiver.coords),
-                        euclidean_distance_3d(interference.coords, receiver.coords))
+                    logger.info('At time: %s (us) ---- Packets collision: '
+                                'Main node is: %s, interference node is: %s, '
+                                'distance between them is: %s, main link distance is: %s, and '
+                                'interference link distance is: %s',
+                                simulator.env.now, main_drone_id, interference_list[i],
+                                euclidean_distance_3d(transmitter.coords, interference.coords),
+                                euclidean_distance_3d(transmitter.coords, receiver.coords),
+                                euclidean_distance_3d(interference.coords, receiver.coords))
 
                     interference_link_path_loss = general_path_loss(receiver, interference)
                     interference_power += transmit_power * interference_link_path_loss
@@ -65,7 +57,9 @@ def sinr_calculator(my_drone, main_drones_list, all_transmitting_drones_list):
                     pass
 
         sinr = 10 * math.log10(receive_power / (noise_power + interference_power))
-        logging.info('The SINR of main link is: %s', sinr)
+        logger.info('At time: %s (us) ---- The SINR of main link between UAV (Tx) %s and UAV (Rx) %s is: %s',
+                    simulator.env.now, main_drone_id, receiver.identifier, sinr)
+
         sinr_list.append(sinr)
 
     return sinr_list
