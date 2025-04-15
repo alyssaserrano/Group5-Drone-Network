@@ -1,20 +1,12 @@
 import copy
-import logging
 import math
 import numpy as np
+from simulator.log import logger
 from entities.packet import DataPacket, AckPacket
 from topology.virtual_force.vf_packet import VfPacket
 from utils import config
 from utils.util_function import euclidean_distance_3d
 from phy.large_scale_fading import maximum_communication_range
-
-
-# config logging
-logging.basicConfig(filename='running_log.log',
-                    filemode='w',  # there are two modes: 'a' and 'w'
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    level=config.LOGGING_LEVEL
-                    )
 
 
 class Opar:
@@ -39,7 +31,7 @@ class Opar:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/3/19
-    Updated at: 2025/3/30
+    Updated at: 2025/4/15
     """
 
     def __init__(self, simulator, my_drone):
@@ -234,8 +226,6 @@ class Opar:
         if isinstance(packet, DataPacket):
             packet_copy = copy.copy(packet)
 
-            logging.info('~~~Packet: %s is received by UAV: %s at: %s',
-                         packet_copy.packet_id, self.my_drone.identifier, self.simulator.env.now)
             if packet_copy.dst_drone.identifier == self.my_drone.identifier:
                 if packet_copy.packet_id not in self.simulator.metrics.datapacket_arrived:
                     latency = self.simulator.env.now - packet_copy.creation_time  # in us
@@ -243,6 +233,8 @@ class Opar:
                     self.simulator.metrics.throughput_dict[packet_copy.packet_id] = packet_copy.packet_length / (latency / 1e6)
                     self.simulator.metrics.hop_cnt_dict[packet_copy.packet_id] = packet_copy.get_current_ttl()
                     self.simulator.metrics.datapacket_arrived.add(packet_copy.packet_id)
+                    logger.info('At time: %s (us) ---- Data packet: %s is received by destination UAV: %s',
+                                self.simulator.env.now, packet_copy.packet_id, self.my_drone.identifier)
 
                 config.GL_ID_ACK_PACKET += 1
 
@@ -267,6 +259,9 @@ class Opar:
                     pass
             else:
                 if self.my_drone.transmitting_queue.qsize() < self.my_drone.max_queue_size:
+                    logger.info('At time: %s (us) ---- Data packet: %s is received by next hop UAV: %s',
+                                self.simulator.env.now, packet_copy.packet_id, self.my_drone.identifier)
+
                     self.my_drone.transmitting_queue.put(packet_copy)
 
                     config.GL_ID_ACK_PACKET += 1
@@ -303,15 +298,15 @@ class Opar:
 
             if self.my_drone.mac_protocol.wait_ack_process_finish[key2] == 0:
                 if not self.my_drone.mac_protocol.wait_ack_process_dict[key2].triggered:
-                    logging.info('At time: %s, the wait_ack process (id: %s) of UAV: %s is interrupted by UAV: %s',
-                                 self.simulator.env.now, key2, self.my_drone.identifier, src_drone_id)
+                    logger.info('At time: %s (us) ---- wait_ack process (id: %s) of UAV: %s is interrupted by UAV: %s',
+                                self.simulator.env.now, key2, self.my_drone.identifier, src_drone_id)
 
                     self.my_drone.mac_protocol.wait_ack_process_finish[key2] = 1  # mark it as "finished"
                     self.my_drone.mac_protocol.wait_ack_process_dict[key2].interrupt()
 
         elif isinstance(packet, VfPacket):
-            logging.info('At time %s, UAV: %s receives the vf hello msg from UAV: %s, pkd id is: %s',
-                         self.simulator.env.now, self.my_drone.identifier, src_drone_id, packet.packet_id)
+            logger.info('At time: %s (us) ---- UAV: %s receives the vf hello msg from UAV: %s, pkd id is: %s',
+                        self.simulator.env.now, self.my_drone.identifier, src_drone_id, packet.packet_id)
 
             # update the neighbor table
             self.my_drone.motion_controller.neighbor_table.add_neighbor(packet, current_time)
