@@ -36,19 +36,13 @@ def sinr_calculator(my_drone, main_drones_list, all_transmitting_drones_list):
         receive_power = transmit_power * main_link_path_loss
         interference_power = 0
 
+        real_interference_nodes = []
+
         for i in range(0, len(interference_list)):
             if interference_list[i] != main_drone_id:  # possible interference
                 if my_drone.channel_assigner.adjacent_channel_interference_check(channel_id, channel_list[i]):
                     interference = simulator.drones[interference_list[i]]
-
-                    logger.info('At time: %s (us) ---- Packets collision: '
-                                'Main node is: %s, interference node is: %s, '
-                                'distance between them is: %s, main link distance is: %s, and '
-                                'interference link distance is: %s',
-                                simulator.env.now, main_drone_id, interference_list[i],
-                                euclidean_distance_3d(transmitter.coords, interference.coords),
-                                euclidean_distance_3d(transmitter.coords, receiver.coords),
-                                euclidean_distance_3d(interference.coords, receiver.coords))
+                    real_interference_nodes.append(interference_list[i])
 
                     interference_link_path_loss = general_path_loss(receiver, interference)
                     interference_power += transmit_power * interference_link_path_loss
@@ -57,6 +51,13 @@ def sinr_calculator(my_drone, main_drones_list, all_transmitting_drones_list):
                     pass
 
         sinr = 10 * math.log10(receive_power / (noise_power + interference_power))
+
+        if real_interference_nodes:
+            logger.info('At time: %s (us) ---- Packets collision: Main node is: %s, interference node is: %s, ',
+                        simulator.env.now, main_drone_id, real_interference_nodes)
+        else:
+            pass
+
         logger.info('At time: %s (us) ---- The SINR of main link between UAV (Tx) %s and UAV (Rx) %s is: %s',
                     simulator.env.now, main_drone_id, receiver.identifier, sinr)
 
