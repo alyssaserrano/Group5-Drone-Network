@@ -1,16 +1,9 @@
 import simpy
-import logging
 import random
+from simulator.log import logger
 from phy.phy import Phy
 from utils import config
 from utils.util_function import check_channel_availability
-
-# config logging
-logging.basicConfig(filename='running_log.log',
-                    filemode='w',  # there are two modes: 'a' and 'w'
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    level=config.LOGGING_LEVEL
-                    )
 
 
 class CsmaCa:
@@ -48,7 +41,7 @@ class CsmaCa:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
-    Updated at: 2025/2/25
+    Updated at: 2025/4/15
     """
 
     def __init__(self, drone):
@@ -78,7 +71,8 @@ class CsmaCa:
         backoff = self.rng_mac.randint(0, contention_window - 1) * config.SLOT_DURATION  # random backoff, in us
         to_wait = config.DIFS_DURATION + backoff
 
-        logging.info('UAV: %s back-off is: %s', self.my_drone.identifier, backoff)
+        logger.info('At time: %s (us) ---- UAV: %s sets its back-off counter as: %s',
+                    self.env.now, self.my_drone.identifier, backoff)
 
         while to_wait:
             # wait until the channel becomes idle
@@ -95,8 +89,8 @@ class CsmaCa:
             # start listen the channel at backoff stage
             self.env.process(self.listen(self.channel_states, self.simulator.drones, pkd))
 
-            logging.info('UAV: %s should wait from: %s, and wait for %s',
-                         self.my_drone.identifier, self.env.now, to_wait)
+            logger.info('At time: %s (us) ---- UAV: %s should wait for %s to countdown its back-off counter',
+                        self.env.now, self.my_drone.identifier, to_wait)
             start_time = self.env.now  # start to wait
 
             try:
@@ -111,8 +105,8 @@ class CsmaCa:
                 with self.channel_states[self.my_drone.identifier].request() as req:
                     yield req
 
-                    logging.info('UAV: %s can send packet (pkd id: %s) at: %s ',
-                                 self.my_drone.identifier, pkd.packet_id, self.env.now)
+                    logger.info('At time: %s (us) ---- UAV: %s can send packet (pkd id: %s)',
+                                self.env.now, self.my_drone.identifier, pkd.packet_id)
 
                     pkd.transmitting_start_time = self.env.now
                     transmission_mode = pkd.transmission_mode
@@ -125,8 +119,8 @@ class CsmaCa:
                         yield self.env.timeout(pkd.packet_length / config.BIT_RATE * 1e6)  # transmission delay
 
                         # only unicast data packets need to wait for ACK
-                        logging.info('UAV: %s start to wait ACK for packet: %s at time: %s',
-                                     self.my_drone.identifier, pkd.packet_id, self.env.now)
+                        logger.info('At time: %s (us) ---- UAV: %s starts to wait ACK for packet: %s',
+                                    self.env.now, self.my_drone.identifier, pkd.packet_id)
 
                         if self.enable_ack:
                             # used to identify the process of waiting ack
@@ -146,8 +140,9 @@ class CsmaCa:
 
             except simpy.Interrupt:
                 already_wait = self.env.now - start_time
-                logging.info('UAV: %s was interrupted at: %s, already waits for: %s, original to_wait is: %s',
-                             self.my_drone.identifier, self.env.now, already_wait, to_wait)
+                logger.info('At time: %s (us) ---- The back-off process of UAV: %s was interrupted, it has been waiting'
+                            ' for: %s, original to_wait is: %s',
+                            self.env.now, self.my_drone.identifier, already_wait, to_wait)
 
                 to_wait -= already_wait  # the remaining waiting time
 
@@ -171,7 +166,8 @@ class CsmaCa:
             yield self.env.timeout(config.ACK_TIMEOUT)
             self.my_drone.routing_protocol.penalize(pkd)
 
-            logging.info('ACK timeout of packet: %s at: %s', pkd.packet_id, self.env.now)
+            logger.info('At time: %s (us) ---- ACK timeout of packet: %s',
+                        self.env.now, pkd.packet_id)
 
             if pkd.number_retransmission_attempt[self.my_drone.identifier] < config.MAX_RETRANSMISSION_ATTEMPT:
                 yield self.env.process(self.my_drone.packet_coming(pkd))
@@ -182,12 +178,13 @@ class CsmaCa:
 
                 self.my_drone.mac_protocol.wait_ack_process_finish[key2] = 1
 
-                logging.info('Packet: %s is dropped!', pkd.packet_id)
+                logger.info('At time: %s (us) ---- Packet: %s is dropped!',
+                            self.env.now, pkd.packet_id)
 
         except simpy.Interrupt:
             # receive ACK in time
-            logging.info('UAV: %s receives the ACK for data packet: %s, at: %s',
-                         self.my_drone.identifier, pkd.packet_id, self.env.now)
+            logger.info('At time: %s (us) ---- UAV: %s receives the ACK for data packet: %s',
+                        self.env.now, self.my_drone.identifier, pkd.packet_id)
 
     def wait_idle_channel(self, sender_drone, drones):
         """
@@ -211,7 +208,7 @@ class CsmaCa:
         :return: none
         """
 
-        logging.info('At time: %s, UAV: %s starts to listen the channel and perform backoff',
+        logger.info('At time: %s (us) ---- UAV: %s starts to listen the channel and perform back-off',
                      self.env.now, self.my_drone.identifier)
 
         key = ''.join(['mac_send', str(self.my_drone.identifier), '_', str(pkd.packet_id)])
