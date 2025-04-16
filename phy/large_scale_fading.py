@@ -55,6 +55,8 @@ def sinr_calculator(my_drone, main_drones_list, all_transmitting_drones_list):
         if real_interference_nodes:
             logger.info('At time: %s (us) ---- Packets collision: Main node is: %s, interference node is: %s, ',
                         simulator.env.now, main_drone_id, real_interference_nodes)
+
+            simulator.metrics.collision_num += 1
         else:
             pass
 

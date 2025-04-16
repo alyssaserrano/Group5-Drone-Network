@@ -61,7 +61,7 @@ class Drone:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
-    Updated at: 2025/4/15
+    Updated at: 2025/4/16
     """
 
     def __init__(self,
@@ -388,7 +388,6 @@ class Drone:
                             logger.info('At time: %s (us) ---- Packet %s is dropped due to exceeding max TTL',
                                         self.env.now, pkd.packet_id)
                     else:  # sinr is lower than threshold
-                        self.simulator.metrics.collision_num += len(sinr_list)
                         pass
 
                 yield self.env.timeout(5)
