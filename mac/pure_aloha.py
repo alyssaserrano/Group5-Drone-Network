@@ -1,15 +1,8 @@
 import simpy
-import logging
 import random
+from simulator.log import logger
 from phy.phy import Phy
 from utils import config
-
-# config logging
-logging.basicConfig(filename='running_log.log',
-                    filemode='w',  # there are two modes: 'a' and 'w'
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    level=config.LOGGING_LEVEL
-                    )
 
 
 class PureAloha:
@@ -28,7 +21,7 @@ class PureAloha:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/4/22
-    Updated at: 2025/2/25
+    Updated at: 2025/4/16
     """
 
     def __init__(self, drone):
@@ -59,14 +52,15 @@ class PureAloha:
         key = ''.join(['mac_send', str(self.my_drone.identifier), '_', str(pkd.packet_id)])
         self.my_drone.mac_process_finish[key] = 1  # mark the process as "finished"
 
-        logging.info('UAV: %s can send packet at: %s', self.my_drone.identifier, self.env.now)
+        logger.info('At time: %s (us) ---- UAV: %s can send packet (pkd id: %s)',
+                    self.env.now, self.my_drone.identifier, pkd.packet_id)
 
         transmission_mode = pkd.transmission_mode
 
         if transmission_mode == 0:  # for unicast
             # only unicast data packets need to wait for ACK
-            logging.info('UAV: %s start to wait ACK for packet: %s at time: %s',
-                         self.my_drone.identifier, pkd.packet_id, self.env.now)
+            logger.info('At time: %s (us) ---- UAV: %s starts to wait ACK for packet: %s',
+                        self.env.now, self.my_drone.identifier, pkd.packet_id)
 
             next_hop_id = pkd.next_hop_id
 
@@ -101,7 +95,8 @@ class PureAloha:
             yield self.env.timeout(config.ACK_TIMEOUT)
             self.my_drone.routing_protocol.penalize(pkd)
 
-            logging.info('ACK timeout of packet: %s at: %s', pkd.packet_id, self.env.now)
+            logger.info('At time: %s (us) ---- ACK timeout of packet: %s',
+                        self.env.now, pkd.packet_id)
 
             if pkd.number_retransmission_attempt[self.my_drone.identifier] < config.MAX_RETRANSMISSION_ATTEMPT:
                 # random wait
@@ -117,9 +112,10 @@ class PureAloha:
                 key2 = ''.join(['wait_ack', str(self.my_drone.identifier), '_', str(pkd.packet_id)])
                 self.my_drone.mac_protocol.wait_ack_process_finish[key2] = 1
 
-                logging.info('Packet: %s is dropped!', pkd.packet_id)
+                logger.info('At time: %s (us) ---- Packet: %s is dropped!',
+                            self.env.now, pkd.packet_id)
 
         except simpy.Interrupt:
             # receive ACK in time
-            logging.info('UAV: %s receives the ACK for data packet: %s, at: %s',
-                         self.my_drone.identifier, pkd.packet_id, self.env.now)
+            logger.info('At time: %s (us) ---- UAV: %s receives the ACK for data packet: %s',
+                        self.env.now, self.my_drone.identifier, pkd.packet_id)
