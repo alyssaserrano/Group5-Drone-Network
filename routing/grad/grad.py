@@ -41,7 +41,7 @@ class Grad:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/4/20
-    Updated at: 2025/4/15
+    Updated at: 2025/4/22
     """
 
     def __init__(self, simulator, my_drone):
@@ -66,18 +66,21 @@ class Grad:
             # channel assignment
             channel_id = self.my_drone.channel_assigner.channel_assign()
 
+            data_packet_copy = copy.copy(packet)
+
             grad_message = GradMessage(src_drone=self.my_drone,
                                        dst_drone=dst_drone,
                                        creation_time=self.simulator.env.now,
                                        id_message=config.GL_ID_GRAD_MESSAGE,
-                                       message_length=100,
+                                       message_length=200 + data_packet_copy.packet_length,
                                        message_type="M_DATA",
                                        accrued_cost=0,
                                        remaining_value=remaining_value,
                                        simulator=self.simulator,
                                        channel_id=channel_id)
 
-            grad_message.attached_data_packet = packet
+            grad_message.attached_data_packet = data_packet_copy
+            grad_message.attached_data_packet.increase_ttl()
             grad_message.transmission_mode = 1  # broadcast
 
             return has_route, grad_message, enquire
@@ -94,7 +97,7 @@ class Grad:
                                        dst_drone=dst_drone,
                                        creation_time=self.simulator.env.now,
                                        id_message=config.GL_ID_GRAD_MESSAGE,
-                                       message_length=100,
+                                       message_length=200,
                                        message_type="M_REQUEST",
                                        accrued_cost=0,
                                        remaining_value=20,
@@ -140,7 +143,7 @@ class Grad:
                                                dst_drone=originator,
                                                creation_time=self.simulator.env.now,
                                                id_message=config.GL_ID_GRAD_MESSAGE,
-                                               message_length=100,
+                                               message_length=200,
                                                message_type="M_REPLY",
                                                accrued_cost=0,
                                                remaining_value=est_cost,
@@ -167,11 +170,8 @@ class Grad:
                 data_packet = packet_copy.attached_data_packet
                 if data_packet.dst_drone.identifier == self.my_drone.identifier:  # reach the destination
                     if data_packet.packet_id not in self.simulator.metrics.datapacket_arrived:
-                        latency = self.simulator.env.now - data_packet.creation_time  # in us
-                        self.simulator.metrics.deliver_time_dict[data_packet.packet_id] = latency
-                        self.simulator.metrics.throughput_dict[data_packet.packet_id] = packet_copy.packet_length / (latency / 1e6)
-                        self.simulator.metrics.hop_cnt_dict[data_packet.packet_id] = packet_copy.get_current_ttl()
-                        self.simulator.metrics.datapacket_arrived.add(data_packet.packet_id)
+                        self.simulator.metrics.calculate_metrics(data_packet)
+
                         logger.info('At time: %s (us) ---- Data packet: %s is received by destination UAV: %s',
                                     self.simulator.env.now, data_packet.packet_id, self.my_drone.identifier)
                 else:
