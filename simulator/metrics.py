@@ -1,6 +1,6 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from collections import defaultdict
+from openpyxl import load_workbook
 
 
 class Metrics:
@@ -28,7 +28,7 @@ class Metrics:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
-    Updated at: 2025/2/24
+    Updated at: 2025/4/22
     """
 
     def __init__(self, simulator):
@@ -52,6 +52,15 @@ class Metrics:
         self.mac_delay = []
 
         self.collision_num = 0
+
+    def calculate_metrics(self, received_packet):
+        """Calculate the corresponding metrics when the destination receives a data packet successfully"""
+        latency = self.simulator.env.now - received_packet.creation_time  # in us
+
+        self.deliver_time_dict[received_packet.packet_id] = latency
+        self.throughput_dict[received_packet.packet_id] = received_packet.packet_length / (latency / 1e6)
+        self.hop_cnt_dict[received_packet.packet_id] = received_packet.get_current_ttl()
+        self.datapacket_arrived.add(received_packet.packet_id)
 
     def print_metrics(self):
         # calculate the average end-to-end delay
