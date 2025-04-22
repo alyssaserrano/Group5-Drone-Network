@@ -33,7 +33,7 @@ class Dsdv:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/4/14
-    Updated at: 2025/4/15
+    Updated at: 2025/4/22
     """
 
     def __init__(self, simulator, my_drone):
@@ -182,11 +182,8 @@ class Dsdv:
             packet_copy = copy.copy(packet)
             if packet_copy.dst_drone.identifier == self.my_drone.identifier:
                 if packet_copy.packet_id not in self.simulator.metrics.datapacket_arrived:
-                    latency = self.simulator.env.now - packet_copy.creation_time  # in us
-                    self.simulator.metrics.deliver_time_dict[packet_copy.packet_id] = latency
-                    self.simulator.metrics.throughput_dict[packet_copy.packet_id] = packet_copy.packet_length / (latency / 1e6)
-                    self.simulator.metrics.hop_cnt_dict[packet_copy.packet_id] = packet_copy.get_current_ttl()
-                    self.simulator.metrics.datapacket_arrived.add(packet_copy.packet_id)
+                    self.simulator.metrics.calculate_metrics(packet_copy)
+
                     logger.info('At time: %s (us) ---- Data packet: %s is received by destination UAV: %s',
                                  self.simulator.env.now, packet_copy.packet_id, self.my_drone.identifier)
 
