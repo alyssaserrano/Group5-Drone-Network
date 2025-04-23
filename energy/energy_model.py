@@ -29,10 +29,12 @@ class EnergyModel:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/3/21
-    Updated at: 2024/3/21
+    Updated at: 2025/4/23
     """
 
-    def __init__(self):
+    def __init__(self, drone):
+        self.my_drone = drone
+
         self.delta = config.PROFILE_DRAG_COEFFICIENT
         self.rho = config.AIR_DENSITY
         self.s = config.ROTOR_SOLIDITY
@@ -45,6 +47,8 @@ class EnergyModel:
         self.v0 = config.MEAN_ROTOR_VELOCITY
         self.d0 = config.FUSELAGE_DRAG_RATIO
 
+        self.my_drone.simulator.env.process(self.energy_monitor())
+
     def power_consumption(self, speed):
         p0 = (self.delta / 8) * self.rho * self.s * self.a * (self.omega ** 3) * (self.r ** 3)
         pi = (1 + self.k) * (self.w ** 1.5) / (math.sqrt(2 * self.rho * self.a))
@@ -54,6 +58,15 @@ class EnergyModel:
 
         p = blade_profile + induced + parasite
         return p
+
+    def energy_monitor(self):
+        """Monitoring energy consumption of drone under a certain energy model"""
+
+        while True:
+            yield self.my_drone.simulator.env.timeout(1 * 1e5)  # report residual energy every 0.1s
+            if self.my_drone.residual_energy <= config.ENERGY_THRESHOLD:
+                self.my_drone.sleep = True
+                # print('UAV: ', self.identifier, ' run out of energy at: ', self.env.now)
 
     def test(self):
         total_power = []

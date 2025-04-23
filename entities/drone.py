@@ -108,16 +108,14 @@ class Drone:
         self.mobility_model = GaussMarkov3D(self)
         # self.motion_controller = VfMotionController(self)
 
-        self.energy_model = EnergyModel()
+        self.energy_model = EnergyModel(self)
         self.residual_energy = config.INITIAL_ENERGY
         self.sleep = False
 
         self.channel_assigner = ChannelAssigner(self.simulator, self)
 
         self.env.process(self.generate_data_packet())
-
         self.env.process(self.feed_packet())
-        # self.env.process(self.energy_monitor())
         self.env.process(self.receive())
 
     def generate_data_packet(self, traffic_pattern='Poisson'):
@@ -306,13 +304,6 @@ class Drone:
                 yield mac_process
         else:
             pass
-
-    def energy_monitor(self):
-        while True:
-            yield self.env.timeout(1 * 1e5)  # report residual energy every 0.1s
-            if self.residual_energy <= config.ENERGY_THRESHOLD:
-                self.sleep = True
-                # print('UAV: ', self.identifier, ' run out of energy at: ', self.env.now)
 
     def remove_from_queue(self, data_pkd):
         """
