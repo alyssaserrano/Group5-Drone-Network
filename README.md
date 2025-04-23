@@ -251,7 +251,7 @@ Our simulation platform can be expanded based on your research needs, including 
 [5] M. Gharib, F. Afghah and E. Bentley, "[Opar: Optimized predictive and adaptive routing for cooperative uav networks](https://ieeexplore.ieee.org/abstract/document/9484489)," in *IEEE INFOCOM 2021-IEEE Conference on Computer Communications Workshops (INFOCOM WKSHPS)*, pp. 1-6, 2021.  
 [6] A. Colvin, "[CSMA with collision avoidance](cn.overleaf.com/project/678e52bd44cc7c6c70e39d90)," *Computer Communications*, vol. 6, no. 5, pp. 227-235, 1983.  
 [7] N. Abramson, "[The ALOHA system: Another alternative for computer communications](n.overleaf.com/project/678e52bd44cc7c6c70e39d90)," in *Proceedings of the November 17-19, 1970, Fall Joint Computer Conference*, pp. 281-285, 1970.  
-[8] Y. Zeng, J. Xu and R. Zhang, "[Energy minimization for wireless communication with rotary-wing UAV](https://ieeexplore.ieee.org/document/8663615)," in *IEEE transactions on wireless communications*, vol. 18, no. 4, pp. 2329-2345, 2019.
+[8] Y. Zeng, J. Xu and R. Zhang, "[Energy minimization for wireless communication with rotary-wing UAV](https://ieeexplore.ieee.org/document/8663615)," in *IEEE transactions on wireless communications*, vol. 18, no. 4, pp. 2329-2345, 2019.  
 [9] H. Liu, X. Chu, Y. -W. Leung and R. Du, "[Simple movement control algorithm for bi-connectivity in robotic sensor networks](https://ieeexplore.ieee.org/document/5555924)," in *IEEE Journal on Selected Areas in Communications*, vol. 28, no. 7, pp. 994-1005, 2010.
 
 ## Contributing
