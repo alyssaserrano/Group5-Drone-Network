@@ -35,6 +35,9 @@ Before you start your simulation journey, we recommend that you read this sectio
 ```
 .
 ├── README.md
+├── allocation
+│   ├── central_controller.py
+│   └── channel_assignment.py
 ├── energy
 │   └── energy_model.py
 ├── entities
