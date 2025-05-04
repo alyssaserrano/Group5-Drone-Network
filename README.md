@@ -87,6 +87,7 @@ Before you start your simulation journey, we recommend that you read this sectio
 ```
 The entry point of this project is the ```main.py``` file, we can even run it directly with one click to get a sneak peek, however, we recommend that you first read this section to understand the modular composition of this simulation platform and the corresponding function.
 
+- ```allocation```: this module implements the resource allocation algorithms, e.g., sub-channel assignment schemes. Power allocation can be implemented as future work.
 - ```energy```: this module implements the energy model of the drone, including the flying energy consumption and the energy consumption related to communication.
 - ```entities```: it includes all the classes that define the behavior and the structure of the key entities in the simulation.
 - ```mac```: it includes the implementation of different medium access control (MAC) protocols, e.g., CSMA/CA, ALOHA.
