@@ -5,9 +5,11 @@
 <div align="center">
   <h1>UavNetSim-v1: A Python based Simulation Platform for UAV Communication Networks</h1>
 
-  <img src="https://img.shields.io/badge/Github-%40ZihaoZhouSCUT-blue" height="20">
-  <img src="https://img.shields.io/badge/Contribution-Welcome-yellowgreen" height="20">
+  <img src="https://img.shields.io/badge/Github-%40Zihao--Felix--Zhou-blue" height="20">
   <img src="https://img.shields.io/badge/License-MIT-brightgreen" height="20">
+  <img src="https://img.shields.io/badge/Version-V1.0-orange" height="20">
+  <img src="https://img.shields.io/badge/Contributions-Welcome-yellowgreen" height="20">
+ 
 
   <h3>Make simulation more friendly to novices! </h3>
 </div>
