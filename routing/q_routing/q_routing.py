@@ -78,7 +78,7 @@ class QRouting:
                                         channel_id=channel_id)
         hello_pkd.transmission_mode = 1
 
-        logger.info('At time: %s (us) ---- UAV: %s broadcast a hello packet to announce broken links',
+        logger.info('At time: %s (us) ---- UAV: %s has a hello packet to broadcast',
                     self.simulator.env.now, self.my_drone.identifier)
 
         self.simulator.metrics.control_packet_num += 1
