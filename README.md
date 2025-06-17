@@ -125,7 +125,7 @@ After the packet is read, a packet type determination will be performed first. I
 When the packet gets the buffer resource, MAC protocol will be performed to contend for the wireless channel. When the packet is successfully received by the next hop, packet type determination needs to be performed. For example, if the received packet is a data packet, an ACK packet is needed to reply after an SIFS time. In addition, if the receiver is the destination of the incoming data packet, some metrics will be recorded (PDR, end-to-end delay, etc.), otherwise, it means that this data packet needs to be further relayed so it will be put into the ```transmitting_queue``` of the receiver drone.
 
 <div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/transmitting_procedure.png" width="800px">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/transmitting_procedure.png" width="700px">
 </div>
 
 ## Module overview
