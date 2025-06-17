@@ -95,7 +95,7 @@ The entry point of this project is the ```main.py``` file, we can even run it di
 
 - ```allocation```: this package includes modules for various resource allocation algorithms, e.g., sub-channel assignment schemes. Power allocation can be implemented as future work.
 - ```energy```: this package includes the drone's energy model, covering both flight and communication-related energy consumption.
-- ```entities```: it encompasses all modules corresponding to the primary entities (e.g., drone, packet) involved in the simulation.
+- ```entities```: it encompasses all modules corresponding to the primary entities involved in the simulation.
 - ```mac```: it includes the implementations of different medium access control protocols.
 - ```mobility```: it contains different 3-D mobility models of drones.
 - ```phy```: it mainly includes the modeling of wireless channels in the physical layer, and the definition of unicast, broadcast, and multicast.
