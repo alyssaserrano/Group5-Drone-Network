@@ -93,15 +93,15 @@ Before you start your simulation journey, we recommend that you read this sectio
 ```
 The entry point of this project is the ```main.py``` file, we can even run it directly with one click to get a sneak peek, however, we recommend that you first read this section to understand the modular composition of this simulation platform and the corresponding function.
 
-- ```allocation```: this module implements the resource allocation algorithms, e.g., sub-channel assignment schemes. Power allocation can be implemented as future work.
-- ```energy```: this module implements the energy model of the drone, including the flying energy consumption and the energy consumption related to communication.
-- ```entities```: it includes all the classes that define the attributes and behavior of the key entities.
-- ```mac```: it includes the implementation of different medium access control (MAC) protocols, e.g., CSMA/CA, ALOHA.
+- ```allocation```: this package includes modules for various resource allocation algorithms, e.g., sub-channel assignment schemes. Power allocation can be implemented as future work.
+- ```energy```: this package includes the drone's energy model, covering both flight and communication-related energy consumption.
+- ```entities```: it encompasses all modules corresponding to the primary entities (e.g., drone, packet) involved in the simulation.
+- ```mac```: it includes the implementations of different medium access control (MAC) protocols, e.g., CSMA/CA, ALOHA.
 - ```mobility```: it contains different 3-D mobility models of drones, e.g., Gauss-Markov mobility model, random walk, and random waypoint.
 - ```phy```: it mainly includes the modeling of wireless channels in the physical layer, and the definition of unicast, broadcast, and multicast.
-- ```routing```: it includes the implementation of different routing protocols, e.g., DSDV, GRAd, greedy routing, Q-Learning-based routing, etc.
-- ```simulator```: it contains all the classes to handle a simulation and the network performance metrics.
-- ```topology```: it includes the implementation of the topology control algorithm for UAV swarm.
+- ```routing```: it includes implementations of various routing protocols.
+- ```simulator```: it comprises all the classes necessary for conducting the simulation and evaluating network performance metrics.
+- ```topology```: this package includes modules for various topology control algorithms for UAV swarm.
 - ```utils```: it contains the key configuration parameters and some useful functions.
 - ```visualization```: it can provide visualization of the distribution of drones, flight trajectory and the packet forwarding paths.
 
