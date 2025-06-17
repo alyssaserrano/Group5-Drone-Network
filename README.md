@@ -38,6 +38,7 @@ Before you start your simulation journey, we recommend that you read this sectio
 - If you are engaged in UAV-assisted wireless communication systems and want to **consider more cross-layer metrics** (e.g., end-to-end delay, packet delivery ratio (PDR), throughput), then this platform is for you
 
 ## Project structure
+
 ```
 .
 ├── README.md
@@ -104,6 +105,10 @@ The entry point of this project is the ```main.py``` file, we can even run it di
 - ```topology```: this package includes modules for various topology control algorithms for UAV swarm.
 - ```utils```: it contains the key configuration parameters and some useful functions.
 - ```visualization```: it can provide visualization of the distribution of drones, flight trajectory and the packet forwarding paths.
+  
+<div align="center">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/protocol_stack.png" width="1000px">
+</div>
 
 ## Installation and usage
 Firstly, download this project:
