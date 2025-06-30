@@ -185,7 +185,7 @@ The energy model of our platform is based on the work of Y. Zeng, et al [8]. The
 ### Motion control
 This platform also supports user to design motion control algorithms for UAV swarm network. In the current version, a virtual force based motion control algorithm[9] is implemented, which incorporates the attractive force from the central point of the region and the repulsive force from neighbor drones. By applying this algorithm, an initial and possibly disconnected network can be self organized into a bi-connected network. The figure above demonstrates the changes of the network topology after motion control. 
 <div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/virtual_force.png" width="700px">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/virtual_force.png" width="800px">
 </div>
 
 How to use? In ```entities/drone.py```, replace the ```mobility_model``` with ```motion_controller```:
