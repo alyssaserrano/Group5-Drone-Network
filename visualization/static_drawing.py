@@ -1,3 +1,4 @@
+import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from utils import config
@@ -25,6 +26,40 @@ def scatter_plot(simulator):
     ax.set_xlim(0, config.MAP_LENGTH)
     ax.set_ylim(0, config.MAP_WIDTH)
     ax.set_zlim(0, config.MAP_HEIGHT)
+
+    # maintain the proportion of the x, y and z axes
+    ax.set_box_aspect([config.MAP_LENGTH, config.MAP_WIDTH, config.MAP_HEIGHT])
+
+    ax.set_xlabel('X (m)')
+    ax.set_ylabel('Y (m)')
+    ax.set_zlabel('Z (m)')
+
+    plt.show()
+
+def draw_sphere(ax, center, radius, color='skyblue', alpha=0.6):
+    u = np.linspace(0, 2 * np.pi, 50)
+    v = np.linspace(0, np.pi, 50)
+    x = center[0] + radius * np.outer(np.cos(u), np.sin(v))
+    y = center[1] + radius * np.outer(np.sin(u), np.sin(v))
+    z = center[2] + radius * np.outer(np.ones_like(u), np.cos(v))
+    ax.plot_surface(x, y, z, color=color, alpha=alpha, edgecolor='k')
+
+def scatter_plot_with_spherical_obstacles(simulator):
+    # TODO: handle the case when the obstacle has a part that extends beyond the map
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    for so in simulator.obstacles:
+        draw_sphere(ax, so.center, so.radius)
+
+    ax.set_xlim(0, config.MAP_LENGTH)
+    ax.set_ylim(0, config.MAP_WIDTH)
+    ax.set_zlim(0, config.MAP_HEIGHT)
+
+    # maintain the proportion of the x, y and z axes
+    ax.set_box_aspect([config.MAP_LENGTH, config.MAP_WIDTH, config.MAP_HEIGHT])
+
     ax.set_xlabel('X (m)')
     ax.set_ylabel('Y (m)')
     ax.set_zlabel('Z (m)')
