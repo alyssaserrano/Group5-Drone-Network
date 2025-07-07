@@ -5,7 +5,7 @@ from simulator.metrics import Metrics
 from mobility import start_coords
 from utils import config
 from allocation.central_controller import CentralController
-from visualization.scatter import scatter_plot
+from visualization.static_drawing import scatter_plot
 
 
 class Simulator:
@@ -23,7 +23,7 @@ class Simulator:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
-    Updated at: 2025/4/1
+    Updated at: 2025/7/7
     """
 
     def __init__(self,
@@ -49,6 +49,7 @@ class Simulator:
         start_position = start_coords.get_random_start_point_3d(seed)
 
         self.drones = []
+        print('Seed is: ', self.seed)
         for i in range(n_drones):
             if config.HETEROGENEOUS:
                 speed = random.randint(5, 60)
@@ -56,8 +57,13 @@ class Simulator:
                 speed = 10
 
             print('UAV: ', i, ' initial location is at: ', start_position[i], ' speed is: ', speed)
-            drone = Drone(env=env, node_id=i, coords=start_position[i], speed=speed,
-                          inbox=self.channel.create_inbox_for_receiver(i), simulator=self)
+            drone = Drone(env=env,
+                          node_id=i,
+                          coords=start_position[i],
+                          speed=speed,
+                          inbox=self.channel.create_inbox_for_receiver(i),
+                          simulator=self)
+
             self.drones.append(drone)
 
         scatter_plot(self)
