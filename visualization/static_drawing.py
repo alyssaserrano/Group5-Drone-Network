@@ -5,8 +5,9 @@ from utils.util_function import euclidean_distance_3d
 from phy.large_scale_fading import maximum_communication_range
 
 
-# draw a static scatter plot, includes communication edges
 def scatter_plot(simulator):
+    """Draw a static scatter plot, includes communication edges (without obstacles)"""
+
     fig = plt.figure()
     ax = fig.add_axes(Axes3D(fig))
 
@@ -24,8 +25,8 @@ def scatter_plot(simulator):
     ax.set_xlim(0, config.MAP_LENGTH)
     ax.set_ylim(0, config.MAP_WIDTH)
     ax.set_zlim(0, config.MAP_HEIGHT)
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
+    ax.set_xlabel('X (m)')
+    ax.set_ylabel('Y (m)')
+    ax.set_zlabel('Z (m)')
 
     plt.show()
