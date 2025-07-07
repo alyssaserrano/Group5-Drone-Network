@@ -1,11 +1,12 @@
 import random
 from phy.channel import Channel
 from entities.drone import Drone
+from entities.obstacle import SphericalObstacle
 from simulator.metrics import Metrics
 from mobility import start_coords
 from utils import config
 from allocation.central_controller import CentralController
-from visualization.static_drawing import scatter_plot
+from visualization.static_drawing import scatter_plot, scatter_plot_with_spherical_obstacles
 
 
 class Simulator:
@@ -48,6 +49,13 @@ class Simulator:
 
         start_position = start_coords.get_random_start_point_3d(seed)
 
+        # # create spherical obstacle
+        # center_list=[[150,150,50], [300,400,20]]
+        # self.obstacles = []
+        # for j in range(2):
+        #     so = SphericalObstacle(center_list[j], 30)
+        #     self.obstacles.append(so)
+
         self.drones = []
         print('Seed is: ', self.seed)
         for i in range(n_drones):
@@ -66,6 +74,7 @@ class Simulator:
 
             self.drones.append(drone)
 
+        # scatter_plot_with_spherical_obstacles(self)
         scatter_plot(self)
 
         self.env.process(self.show_performance())
@@ -74,7 +83,9 @@ class Simulator:
     def show_time(self):
         while True:
             print('At time: ', self.env.now / 1e6, ' s.')
-            yield self.env.timeout(0.5*1e6)  # the simulation process is displayed every 0.5s
+
+            # the simulation process is displayed every 0.5s
+            yield self.env.timeout(0.5*1e6)
 
     def show_performance(self):
         yield self.env.timeout(self.total_simulation_time - 1)
