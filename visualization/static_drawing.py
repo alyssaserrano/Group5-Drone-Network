@@ -36,22 +36,21 @@ def scatter_plot(simulator):
 
     plt.show()
 
-def draw_sphere(ax, center, radius, color='skyblue', alpha=0.6):
-    u = np.linspace(0, 2 * np.pi, 50)
-    v = np.linspace(0, np.pi, 50)
-    x = center[0] + radius * np.outer(np.cos(u), np.sin(v))
-    y = center[1] + radius * np.outer(np.sin(u), np.sin(v))
-    z = center[2] + radius * np.outer(np.ones_like(u), np.cos(v))
-    ax.plot_surface(x, y, z, color=color, alpha=alpha, edgecolor='k')
-
-def scatter_plot_with_spherical_obstacles(simulator):
-    # TODO: handle the case when the obstacle has a part that extends beyond the map
-
+def scatter_plot_with_obstacles(simulator, grid, path_list):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    for so in simulator.obstacles:
-        draw_sphere(ax, so.center, so.radius)
+    for obst_type in simulator.obstacle_type:
+        obstacle_points = np.argwhere(grid == obst_type)
+        if obstacle_points.size > 0:
+            ax.scatter(obstacle_points[:, 0] * config.GRID_RESOLUTION,
+                       obstacle_points[:, 1] * config.GRID_RESOLUTION,
+                       obstacle_points[:, 2] * config.GRID_RESOLUTION)
+
+    for path in path_list:
+        if path:
+            path = np.array(path)
+            ax.plot(path[:, 0], path[:, 1], path[:, 2], color='blue', linewidth=3)
 
     ax.set_xlim(0, config.MAP_LENGTH)
     ax.set_ylim(0, config.MAP_WIDTH)
