@@ -58,6 +58,9 @@ Before you start your simulation journey, we recommend that you read this sectio
 │   ├── random_walk_3d.py
 │   ├── random_waypoint_3d.py
 │   └── start_coords.py
+├── path_planning
+│   ├── astar
+│   │   └── astar.py
 ├── phy
 │   ├── channel.py
 │   ├── large_scale_fading.py
