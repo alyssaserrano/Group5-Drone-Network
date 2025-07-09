@@ -217,6 +217,19 @@ for j in range(number_of_cube_obst):
     self.obstacle_type.add(obst.id)
 ```
 
+After adding the obstacles, we can call the path planning algorithm to determine the optimal path:
+```python
+from path_planning.astar import astar  # NOTE: REMEMBER TO IMPORT THE CORRESPONDING MODULE
+from visualization.static_drawing import scatter_plot_with_obstacles
+
+...
+
+start_pos = tuple([0,0,0])
+end_pos = tuple([350,200,40])
+path = astar.a_star_3d(start_pos, end_pos, grid)
+scatter_plot_with_obstacles(self, grid, [path])
+```
+
 ### Energy model
 The energy model of our platform is based on the work of Y. Zeng, et al [8]. The figure below shows the power required for different drone flying speeds. The energy consumption is equal to the power multiplied by the flight time at this speed.
 <div align="center">
