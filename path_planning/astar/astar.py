@@ -65,6 +65,32 @@ def a_star_3d(start_pos, end_pos, grid):
 
     """
 
+    # error check
+    # 1. boundary check
+    boundary = tuple([config.MAP_LENGTH, config.MAP_WIDTH, config.MAP_HEIGHT])
+    if not all(0 <= s < b for s, b in zip(start_pos, boundary)):
+        raise ValueError(f"The starting point is outside the boundary of the map!")
+    elif not all(0 <= e < b for e, b in zip(end_pos, boundary)):
+        raise ValueError(f"The end point is outside the boundary of the map!")
+
+    # 2. resolution check
+    if not all(s % config.GRID_RESOLUTION == 0 for s in start_pos):
+        raise ValueError(f"It is recommended that the coordinate value of the starting point be set as integer "
+                         f"multiples of the grid resolution!")
+    elif not all(e % config.GRID_RESOLUTION == 0 for e in end_pos):
+        raise ValueError(f"It is recommended that the coordinate value of the end point be set as integer "
+                         f"multiples of the grid resolution!")
+
+    # 3. Obstacle check
+    if grid[int(start_pos[0] / config.GRID_RESOLUTION),
+            int(start_pos[1] / config.GRID_RESOLUTION),
+            int(start_pos[2] / config.GRID_RESOLUTION)] != 0:
+        raise ValueError(f"The starting point collides with the obstacle!")
+    elif grid[int(end_pos[0] / config.GRID_RESOLUTION),
+              int(end_pos[1] / config.GRID_RESOLUTION),
+              int(end_pos[2] / config.GRID_RESOLUTION)] != 0:
+        raise ValueError(f"The end point collides with the obstacle!")
+
     frontier = PriorityQueue()  # used to store the points to be traversed
     frontier.put((0, start_pos))
     came_from = dict()
