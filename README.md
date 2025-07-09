@@ -230,6 +230,8 @@ path = astar.a_star_3d(start_pos, end_pos, grid)
 scatter_plot_with_obstacles(self, grid, [path])
 ```
 
+After running the ```scatter_plot_with_obstacles``` function, you will get the figure showing the path and the obstacles, as shown in the above picture.
+
 ### Energy model
 The energy model of our platform is based on the work of Y. Zeng, et al [8]. The figure below shows the power required for different drone flying speeds. The energy consumption is equal to the power multiplied by the flight time at this speed.
 <div align="center">
