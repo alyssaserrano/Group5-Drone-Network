@@ -218,19 +218,25 @@ for j in range(number_of_cube_obst):
     self.obstacle_type.add(obst.id)
 ```
 
-After adding the obstacles, we can call the path planning algorithm to determine the optimal path:
+After adding the obstacles, each drone can call the path planning algorithm to determine its optimal path (go to ```entities/drone.py```):  
 ```python
 from path_planning.astar import astar  # NOTE: REMEMBER TO IMPORT THE CORRESPONDING MODULE
+from path_planning.path_following_3d import PathFollowing3D
 from visualization.static_drawing import scatter_plot_with_obstacles
 
 ...
 
-start_pos = tuple([0,0,0])
-end_pos = tuple([350,200,40])
-path = astar.a_star_3d(start_pos, end_pos, grid)
-scatter_plot_with_obstacles(self, grid, [path])
-```
+class Drone:
+    ...
 
+    path = astar.a_star_3d(self.start_coords, end_pos, self.simulator.grid)
+    scatter_plot_with_obstacles(self.simulator, self.simulator.grid, [path])  # optional
+
+    # the mobility model
+    self.mobility_model = PathFollowing3D(self, path)
+
+    ...
+```
 After running the ```scatter_plot_with_obstacles``` function, you will get the figure showing the path and the obstacles, as shown in the above picture.
 
 ### Energy model
