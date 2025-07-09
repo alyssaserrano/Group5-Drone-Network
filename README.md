@@ -182,6 +182,7 @@ The mobility model is one of the most important mudules to show the characterist
 </div>
 
 ### 3D Path planning
+Our UavNetSim-v1 platform now supports the design and test of the 3-D path planning algorithms for drone. The baseline we have implemented so far is the A* algorithm, subsequently, we will continue to expand the baselines, such as Dijkstra, DFS, BFS, DRL-based path planning, etc.
 
 <div align="center">
 <img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/a_star_path_planning.png" width="700px">
