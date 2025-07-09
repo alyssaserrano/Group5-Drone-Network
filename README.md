@@ -49,6 +49,7 @@ Before you start your simulation journey, we recommend that you read this sectio
 │   └── energy_model.py
 ├── entities
 │   ├── drone.py
+│   ├── obstacle.py
 │   └── packet.py
 ├── mac
 │   ├── csma_ca.py
@@ -91,7 +92,7 @@ Before you start your simulation journey, we recommend that you read this sectio
 │   ├── ieee_802_11.py
 │   └── util_function.py
 ├── visualization
-│   ├── scatter.py
+│   ├── static_drawing.py
 │   └── visualizer.py
 └── main.py
 ```
@@ -102,6 +103,7 @@ The entry point of this project is the ```main.py``` file, we can even run it di
 - ```entities```: it encompasses all modules corresponding to the primary entities involved in the simulation.
 - ```mac```: it includes the implementations of different medium access control protocols.
 - ```mobility```: it contains different 3-D mobility models of drones.
+- ```path_planning```: this package includes modules for different 3D path planning algorithms (e.g., A*) for drone.
 - ```phy```: it mainly includes the modeling of wireless channels in the physical layer, and the definition of unicast, broadcast, and multicast.
 - ```routing```: it includes implementations of various routing protocols.
 - ```simulator```: it comprises all the classes necessary for conducting the simulation and evaluating network performance metrics.
