@@ -187,6 +187,36 @@ The mobility model is one of the most important mudules to show the characterist
 <img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/a_star_path_planning.png" width="700px">
 </div>
 
+How to use? If you want to add obstacles into the environment, go to ```simulator/simulator.py```:
+```python
+from entities.obstacle import SphericalObstacle, CubeObstacle
+
+...
+
+grid = grid_map()
+self.obstacle_type = set()
+
+# create spherical obstacle
+num_of_spherical_obst = 2
+center_list_so = [[200, 100, 30], [50, 10, 5]]
+radius_list_so = [30, 10]
+for i in range(num_of_spherical_obst):
+    obst = SphericalObstacle(center_list_so[i], radius_list_so[i])
+    obst.add_to_grid(grid)
+    self.obstacle_type.add(obst.id)
+
+# create cube obstacle
+number_of_cube_obst = 3
+center_list_co = [[50,50,1], [100,60,1],[160,96,1]]
+length_list_co = [30, 10, 15]
+width_list_co = [15, 15, 20]
+height_list_co = [10, 20, 30]
+for j in range(number_of_cube_obst):
+    obst = CubeObstacle(center_list[j], length_list_co[j], width_list_co[j], height_list_co[j])
+    obst.add_to_grid(grid)
+    self.obstacle_type.add(obst.id)
+```
+
 ### Energy model
 The energy model of our platform is based on the work of Y. Zeng, et al [8]. The figure below shows the power required for different drone flying speeds. The energy consumption is equal to the power multiplied by the flight time at this speed.
 <div align="center">
