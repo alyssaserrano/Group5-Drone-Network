@@ -194,7 +194,7 @@ from entities.obstacle import SphericalObstacle, CubeObstacle
 
 ...
 
-grid = grid_map()
+self.grid = grid_map()
 self.obstacle_type = set()
 
 # create spherical obstacle
@@ -203,7 +203,7 @@ center_list_so = [[200, 100, 30], [50, 10, 5]]
 radius_list_so = [30, 10]
 for i in range(num_of_spherical_obst):
     obst = SphericalObstacle(center_list_so[i], radius_list_so[i])
-    obst.add_to_grid(grid)
+    obst.add_to_grid(self.grid)
     self.obstacle_type.add(obst.id)
 
 # create cube obstacle
@@ -214,7 +214,7 @@ width_list_co = [15, 15, 20]
 height_list_co = [10, 20, 30]
 for j in range(number_of_cube_obst):
     obst = CubeObstacle(center_list[j], length_list_co[j], width_list_co[j], height_list_co[j])
-    obst.add_to_grid(grid)
+    obst.add_to_grid(self.grid)
     self.obstacle_type.add(obst.id)
 ```
 
