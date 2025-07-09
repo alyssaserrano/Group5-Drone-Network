@@ -1,12 +1,16 @@
 import random
+import numpy as np
+import matplotlib.pyplot as plt
 from phy.channel import Channel
 from entities.drone import Drone
-from entities.obstacle import SphericalObstacle
+from entities.obstacle import SphericalObstacle, CubeObstacle
 from simulator.metrics import Metrics
 from mobility import start_coords
+from path_planning.astar import astar
 from utils import config
+from utils.util_function import grid_map
 from allocation.central_controller import CentralController
-from visualization.static_drawing import scatter_plot, scatter_plot_with_spherical_obstacles
+from visualization.static_drawing import scatter_plot, scatter_plot_with_obstacles
 
 
 class Simulator:
@@ -24,7 +28,7 @@ class Simulator:
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
-    Updated at: 2025/7/7
+    Updated at: 2025/7/8
     """
 
     def __init__(self,
@@ -48,13 +52,7 @@ class Simulator:
         # self.central_controller = CentralController(self)
 
         start_position = start_coords.get_random_start_point_3d(seed)
-
-        # # create spherical obstacle
-        # center_list=[[150,150,50], [300,400,20]]
-        # self.obstacles = []
-        # for j in range(2):
-        #     so = SphericalObstacle(center_list[j], 30)
-        #     self.obstacles.append(so)
+        # start_position = start_coords.get_customized_start_point_3d()
 
         self.drones = []
         print('Seed is: ', self.seed)
