@@ -115,6 +115,15 @@ The entry point of this project is the ```main.py``` file, we can even run it di
 <img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/protocol_stack.png" width="1000px">
 </div>
 
+| Layer | Currently implemented protocols, algorithms or models |
+| --- | --- |
+| Application layer | Uniform distribution for data packet arrival <br> Poisson distribution for data packet arrival |
+| Transport layer | Automatic repeat request (ARQ) |
+| Network layer | |
+| Topology control layer | |
+| Medium access control layer | |
+| Physical layer | |
+
 ## Installation and usage
 Firstly, download this project:
 ```
