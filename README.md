@@ -110,10 +110,6 @@ The entry point of this project is the ```main.py``` file, we can even run it di
 - ```topology```: this package includes modules for various topology control algorithms for UAV swarm.
 - ```utils```: it contains the key configuration parameters and some useful functions.
 - ```visualization```: it can provide visualization of the distribution of drones, flight trajectory and the packet forwarding paths.
-  
-<div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/protocol_stack.png" width="1000px">
-</div>
 
 | Layer | Currently implemented protocols, algorithms or models |
 | --- | --- |
