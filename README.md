@@ -340,8 +340,21 @@ Our simulation platform can be expanded based on your research needs, including 
 ## Contributing
 Contributions are warmly welcome! 
 
+## Citation
+If you find our paper useful, please kindly cite us via:
+```
+@inproceedings{zhou2025uavnetsimv1,
+    title={UavNetSim-v1: A Python-based Simulation Platform for UAV Communication Networks},
+    author={Zihao Zhou, Zipeng Dai, Linyi Huang, Cui Yang, Youjun Xiang, Jie Tang and Kai-kit Wong},
+    booktitle={14-th IEEE/CIC International Conference on Communications in China},
+    address = {Shanghai, China},
+    month = {August},
+    year = {2025}
+}
+```
+
 ## Show your support
-Give a ⭐ if this project helped you!
+Give a ⭐ if this project helped you! 
 
 ## License
 This project is MIT-licensed.
