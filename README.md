@@ -14,7 +14,16 @@
   <h3>Make simulation more friendly to novices! </h3>
 </div>
 
-This Python-based simulation platform provides a realistic and comprehensive modeling of various components in UAV networks, including the network layer, MAC layer, physical layer, as well as UAV mobility and energy models. Moreover, the platform is highly extensible, allowing users to customize and develop their own protocols to suit diverse application requirements.
+This Python-based simulation platform provides a realistic and comprehensive modeling of various components in UAV networks, including the network layer, MAC layer, physical layer, as well as UAV mobility and energy models. Moreover, the platform is highly extensible, allowing users to customize and develop their own protocols to suit diverse application requirements. <br>  
+
+This repository corresponds to our following paper. In addition, we have also updated many new modules and baselines at present.
+> UavNetSim-v1: A Python-based Simulation Platform for UAV Communication Networks <br>
+> [Zihao Zhou](https://zihao-felix-zhou.github.io/)<sup>1</sup>, [Zipeng Dai](http://zipengdai.com/)<sup>2</sup>, Linyi Huang<sup>3</sup>, [Cui Yang](https://yanzhao.scut.edu.cn/open/ExpertInfo.aspx?zjbh=YBh67JO2Lu3MRcgZBW!y0g==)<sup>1</sup>, [Youjun Xiang](https://yanzhao.scut.edu.cn/open/ExpertInfo.aspx?zjbh=OqvoZ7Uc98hlRMLm8c2JGA==)<sup>1</sup>, [Jie Tang](https://yanzhao.scut.edu.cn/open/ExpertInfo.aspx?zjbh=jAxeXRUecjTAjkxrmc2Dnw==)<sup>1</sup> and [Kai-kit Wong](https://www.ee.ucl.ac.uk/~uceekwo/)<sup>4,5</sup> <br>
+> <sup>1</sup> School of Electronic and Information Engineering, South China University of Technology <br>
+> <sup>2</sup> Department of Computer Science and Technology, Beijing Institute of Technology <br>
+> <sup>3</sup> Thrust of Robotics and Autonomous Systems, The Hong Kong University of Science and Technology (Guangzhou) <br>
+> <sup>4</sup> Department of Electrical and Electronic Engineering, University College London <br>
+> <sup>5</sup> Yonsei Frontier Lab, Yonsei University
 
 <div align="center">
 <img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/Schematic_of_uav_swarms.png" width="1000px">
