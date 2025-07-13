@@ -103,6 +103,9 @@ class QMR:
             has_route = False  # no available next hop
         else:
             packet.next_hop_id = next_hop_id  # it has an available next hop drone
+        
+        if has_route:
+            self.history_packet_recorder.add_sent_data_packet(packet)
 
         return has_route, packet, enquire
 
