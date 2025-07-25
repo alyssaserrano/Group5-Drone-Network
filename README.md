@@ -354,7 +354,7 @@ If you find our paper useful, please kindly cite us via:
 ```
 @inproceedings{zhou2025uavnetsim,
     title={UavNetSim-v1: A Python-based Simulation Platform for UAV Communication Networks},
-    author={Zihao Zhou, Zipeng Dai, Linyi Huang, Cui Yang, Youjun Xiang, Jie Tang and Kai-kit Wong},
+    author={Zhou, Zihao and Dai, Zipeng and Huang, Linyi and Yang, Cui and Xiang, Youjun and Tang, Jie and Wong, Kai-kit},
     booktitle={14-th IEEE/CIC International Conference on Communications in China},
     address = {Shanghai, China},
     month = {August},
