@@ -131,3 +131,10 @@
 | 拓扑控制层 | 随机移动模型: <br> <ul><li>[3D Gauss-Markov mobility model](https://repository.arizona.edu/bitstream/handle/10150/604297/ITC_2010_10-03-06.pdf?sequence=1&isAllowed=y)</li><li>[3D Random Waypoint mobility model](https://ieeexplore.ieee.org/document/8671460)</li><li>[3D Random Walk mobility model](https://link.springer.com/chapter/10.1007/978-1-4419-6050-4_3#citeas)</li></ul> 拓扑控制算法: <br> <ul><li>[Virtual force-based topology control](https://ieeexplore.ieee.org/document/5555924)</li></ul> 路径规划以及避障算法: <br> <ul><li>A* 3D path planning</li></ul>|
 | 媒体接入控制层 |<ul><li>[CSMA/CA: Carrier-Sense Multiple Access with Collision Avoidance](https://en.wikipedia.org/wiki/Carrier-sense_multiple_access_with_collision_avoidance)</li> <li>[Pure ALOHA](https://www.tutorialspoint.com/data_communication_computer_network/pure_aloha.htm)</li></ul>|
 | 物理层 | 所考虑的物理层特性: <br> <ul><li>视距信道</li> <li>概率视距信道</li> <li>数据包碰撞以及信号干扰</li> <li>单播、多播以及广播</li></ul> |
+
+## 安装及使用
+首先，下载该项目:
+```
+git clone https://github.com/Zihao-Felix-Zhou/UavNetSim-v1.git
+```
+运行 ```main.py``` 以启动仿真. 
