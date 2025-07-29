@@ -14,7 +14,7 @@
   <h3>Make simulation more friendly to novices! </h3>
 </div>
 
-Read this in other languages: [English](README.md), [中文](README_CHINESE.md)
+Read this in other languages: [中文](README_CHINESE.md)
 
 This Python-based simulation platform provides a realistic and comprehensive modeling of various components in UAV networks, including the network layer, MAC layer, physical layer, as well as UAV mobility and energy models. Moreover, the platform is highly extensible, allowing users to customize and develop their own protocols to suit diverse application requirements. <br>  
 
