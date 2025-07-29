@@ -48,3 +48,63 @@
 - 易于扩展（1.采用**模块化编程方案**，因此用户可以很轻易地增加自己设计的模块；2. 潜在地支持不同的应用场景，如**飞行自组织网络**，**无人机辅助的数据采集**，**空地一体化网络**等）；
 - **较好的可视化**，该平台能够直观地展示无人机的**飞行轨迹**以及**包的传输路径**，这能够帮助用户直观地分析协议的行为；
 - 如果您从事无人机辅助的无线通信系统，并希望能够考虑更多**跨层指标**（如端到端时延、包传输率，吞吐量等），那么这款平台将会适合你！
+
+## 项目架构
+
+```
+.
+├── README.md
+├── allocation
+│   ├── central_controller.py
+│   └── channel_assignment.py
+├── energy
+│   └── energy_model.py
+├── entities
+│   ├── drone.py
+│   ├── obstacle.py
+│   └── packet.py
+├── mac
+│   ├── csma_ca.py
+│   └── pure_aloha.py
+├── mobility
+│   ├── gauss_markov_3d.py
+│   ├── random_walk_3d.py
+│   ├── random_waypoint_3d.py
+│   └── start_coords.py
+├── path_planning
+│   ├── astar
+│   │   └── astar.py
+├── phy
+│   ├── channel.py
+│   ├── large_scale_fading.py
+│   └── phy.py
+├── routing
+│   ├── dsdv
+│   │   ├── dsdv.py
+│   │   ├── dsdv_packet.py
+│   │   └── dsdv_routing_table.py
+│   ├── grad
+│   │   └── ...
+│   ├── greedy
+│   │   └── ...
+│   ├── opar
+│   │   └── ...
+│   └── q_routing
+│       └── ...
+├── simulator
+│   ├── metrics.py
+│   └── simulator.py
+├── topology
+│   └── virtual_force
+│       ├── vf_motion_control.py
+│       ├── vf_neighbor_table.py
+│       └── vf_packet.py
+├── utils
+│   ├── config.py
+│   ├── ieee_802_11.py
+│   └── util_function.py
+├── visualization
+│   ├── static_drawing.py
+│   └── visualizer.py
+└── main.py
+```
