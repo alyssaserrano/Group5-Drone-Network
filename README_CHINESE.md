@@ -108,3 +108,26 @@
 │   └── visualizer.py
 └── main.py
 ```
+该项目的入口是```main.py```文件，我们甚至可以直接一键运行来提前预览一下效果，但我们还是建议您先阅读本节，了解该仿真平台的模块组成和相应的功能。
+
+- ```allocation```:该文件夹中包括了不同的资源分配算法模块，例如：子信道分配策略。未来可以考虑进一步实现功率分配算法。
+- ```energy```: 该文件夹中包括了无人机的能量消耗模型，包括飞行以及通信相关的能量消耗。
+- ```entities```: 它包含与仿真中涉及的主要实体相对应的所有模块。
+- ```mac```: 其包含了不同媒体接入控制协议的实现。
+- ```mobility```: 其包含了不同的无人机三维移动模型。
+- ```path_planning```: 其包含了不同的无人机三维路径规划算法模块（如A*算法）。
+- ```phy```: 其主要包括了物理层无线信道的建模，以及对单播、多播和广播行为的定义。
+- ```routing```: 其主要包括了不同路由协议的实现。
+- ```simulator```: 其包含了进行仿真和评估网络性能指标所需的所有类。
+- ```topology```: 其包含了不同的无人机集群拓扑控制算法的实现。
+- ```utils```: 其包含了关键的仿真参数设置以及一些常用的函数。
+- ```visualization```: 能够提供无人机节点分布、飞行轨迹和数据包转发路径的可视化展示。
+
+| 层 | 当前已经实现的协议、算法或模型 |
+| --- | --- |
+| Application layer | Uniform distribution for data packet arrival <br> Poisson distribution for data packet arrival |
+| Transport layer | Automatic repeat request (ARQ) |
+| Network layer | Routing protocols: <br> <ul><li>[DSDV: Destination-Sequenced Distance-Vector routing](https://dl.acm.org/doi/abs/10.1145/190809.190336)</li> <li>[GRAd: Gradient Routing in Ad Hoc Networks](www.media.mit.edu/pia/Research/ESP/texts/poorieeepaper.pdf)</li> <li>[Greedy forwarding](https://en.wikipedia.org/wiki/Geographic_routing)</li> <li>[OPAR: Optimized Predictive and Adaptive Routing](https://ieeexplore.ieee.org/abstract/document/9484489)</li> <li>[QMR: Q-learning based Multi-objective optimization Routing](https://hal.science/hal-02970649v1/document)</li> <li>[QGeo: Q-learning-based Geographic routing](https://ieeexplore.ieee.org/abstract/document/7829268/)</li> <li>[Classical Q-Routing](https://proceedings.neurips.cc/paper/1993/hash/4ea06fbc83cdd0a06020c35d50e1e89a-Abstract.html)</li></ul>|
+| Topology control layer | Random mobility models: <br> <ul><li>[3D Gauss-Markov mobility model](https://repository.arizona.edu/bitstream/handle/10150/604297/ITC_2010_10-03-06.pdf?sequence=1&isAllowed=y)</li><li>[3D Random Waypoint mobility model](https://ieeexplore.ieee.org/document/8671460)</li><li>[3D Random Walk mobility model](https://link.springer.com/chapter/10.1007/978-1-4419-6050-4_3#citeas)</li></ul> Topology control algorithms: <br> <ul><li>[Virtual force-based topology control](https://ieeexplore.ieee.org/document/5555924)</li></ul> Path planning and obstacle avoidance algorithms: <br> <ul><li>A* 3D path planning</li></ul>|
+| Medium access control layer |<ul><li>[CSMA/CA: Carrier-Sense Multiple Access with Collision Avoidance](https://en.wikipedia.org/wiki/Carrier-sense_multiple_access_with_collision_avoidance)</li> <li>[Pure ALOHA](https://www.tutorialspoint.com/data_communication_computer_network/pure_aloha.htm)</li></ul>|
+| Physical layer | The characteristics in physical layer that taken into account: <br> <ul><li>Line-of-Sight (LoS) channel</li> <li>Probabilistic Line-of-Sight (LoS) channel</li> <li>Packet collisions and signal interference</li> <li>Unicast, multicast and broadcast</li></ul> |
