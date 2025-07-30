@@ -140,4 +140,12 @@ git clone https://github.com/Zihao-Felix-Zhou/UavNetSim-v1.git
 运行 ```main.py``` 以启动仿真.   
 
 ## 核心逻辑
-下图展示了 *UavNetSim* 平台中包传输的主要过程。无人机的buffer设置为了一个容量为1的SimPy资源，这就意味着一个无人机一次最多只能发送一个包。如果有多个包需要传输，那么它们就需要根据其到达时间来排队等待buffer资源（这属于没有考虑包优先级的情况），因此我们就可以根据这种机制来模拟排队时延。此外，我们还注意到图中有两个容器：```transmitting_queue``` 和 ```waiting_list```，
+下图展示了 *UavNetSim* 平台中包传输的主要过程。无人机的buffer设置为了一个容量为1的SimPy资源，这就意味着一个无人机一次最多只能发送一个包。如果有多个包需要传输，那么它们就需要根据其到达时间来排队等待buffer资源（这属于没有考虑包优先级的情况），因此我们就可以根据这种机制来模拟排队时延。此外，我们还注意到图中有两个容器：```transmitting_queue``` 和 ```waiting_list```，对于所有由无人机自身所产生的数据包和控制包，或者是该无人机从其他节点处接收到且需要进一步转发的包，它们都会被放到```transmitting_queue```中。```feed_packet```函数会周期性（此周期是一个非常短的时间）地读取```transmitting_queue```头部的包，并令其等待 ```buffer``` 资源。需要注意的是ACK包会直接等待 ```buffer``` 资源而无需进入```transmitting_queue```。  
+
+当一个包被读取后，首先需要判断该包的类型。如果该包是一个控制包（通常来说是以广播的形式，不需要选择下一跳），那么它将会直接开始等待```buffer```资源。如果该包是数据包，那么则需要调用路由协议来选择下一跳，如果找到了合适的下一跳节点，那么该数据包将会开始等待 ```buffer``` 资源，否则，该包将会被放入到 ```waiting_list```中，一旦该无人机在未来某个时间内重新找到了相关的路由信息，该无人机节点就会将此数据包从 ```waiting_list``` 中取出，并加入到 ```transmitting_queue```中。  
+
+当包得到了 ```buffer``` 资源之后，MAC协议就会执行以争用（或调度）无线信道。当包成功被其他无人机接收后，同样在接收端需要判断包的类型。例如，如果收到的是数据包，那么接收方需要在一个SIFS时间后回复ACK包。除此之外，如果接收方是数据包的目的地，那么将会开始记录网络指标（如PDR,端到端时延等），否则，就意味着该数据包还需要被进一步转发，因此该数据包将会被放入到接收方的 ```transmitting_queue```中。  
+
+<div align="center">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/transmitting_procedure.png" width="700px">
+</div>
