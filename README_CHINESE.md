@@ -169,3 +169,14 @@ git clone https://github.com/Zihao-Felix-Zhou/UavNetSim-v1.git
 <div align="center">
 <img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/csmaca.png" width="800px">
 </div>
+
+下图展示了在纯Aloha协议下包的传输过程。当无人机想要传输一个数据包时（如果是首次发送）：  
+
+1. 该无人机直接发送该包，无需监听信道以及退避
+2. 在发送完该数据包后，该无人机节点开始等待ACK包
+3. 如果无人机顺利接收到了ACK包，则 ```mac_send``` 过程就会结束
+4. 如果没有收到ACK包，则该无人机将会根据重传次数随机等待一段时间，之后再重新发送该数据包
+
+<div align="center">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/pure_aloha.png" width="800px">
+</div>
