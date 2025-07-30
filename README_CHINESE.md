@@ -180,3 +180,13 @@ git clone https://github.com/Zihao-Felix-Zhou/UavNetSim-v1.git
 <div align="center">
 <img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/pure_aloha.png" width="800px">
 </div>
+
+从上图中，我们可以看到，不仅仅是两个无人机同时发送数据包会导致数据包冲突，如果两个数据包的传输时间出现重叠，也意味着发生了碰撞。因此，在我们的项目中，每个无人机每隔很短的时间就会检查它的inbox，并有几件重要的事情要做（如下图所示）：  
+
+1. 删除其inbox中与当前时间距离大于最大包传输延迟两倍的包记录。这减少了计算开销，因为保证这些包已经处理过，不会干扰尚未处理的包
+2. 检查inbox中的包记录，看看哪个包已经完整地传输给了自己
+3. 如果存在这样的记录，则在所有无人机的inbox记录中找到与该数据包在传输时间上重叠的其他数据包，并l利用它们计算SINR
+
+<div align="center">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/reception_logic.png" width="800px">
+</div>
