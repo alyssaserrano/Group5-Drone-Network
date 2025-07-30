@@ -137,4 +137,7 @@
 ```
 git clone https://github.com/Zihao-Felix-Zhou/UavNetSim-v1.git
 ```
-运行 ```main.py``` 以启动仿真. 
+运行 ```main.py``` 以启动仿真.   
+
+## 核心逻辑
+下图展示了 *UavNetSim* 平台中包传输的主要过程。无人机的buffer设置为了一个容量为1的SimPy资源，这就意味着一个无人机一次最多只能发送一个包。如果有多个包需要传输，那么它们就需要根据其到达时间来排队等待buffer资源（这属于没有考虑包优先级的情况），因此我们就可以根据这种机制来模拟排队时延。此外，我们还注意到图中有两个容器：```transmitting_queue``` 和 ```waiting_list```，
