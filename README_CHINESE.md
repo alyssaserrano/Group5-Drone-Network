@@ -190,3 +190,10 @@ git clone https://github.com/Zihao-Felix-Zhou/UavNetSim-v1.git
 <div align="center">
 <img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/reception_logic.png" width="800px">
 </div>
+
+## 移动模型
+移动模型是更加真实地展示无人机网络特性的最重要的模块之一。在该项目中，我们目前实现了三种随机移动模型，包括： **3D 高斯马尔可夫移动模型**, **3D 随机游走移动模型** 以及**3D 随机航点移动模型**。具体而言，在离散时间的仿真中要想实现无人机节点的连续运动是比较难的，因此我们设置了一个 ```position_update_interval``` 来周期性地更新无人机的位置，我们就假设无人机在这个较小的时间间隔内是连续运动的。```position_update_interval```越小，对应的仿真精度就更高，但也会相应地增大仿真的时间。在三种移动模型下仿真单架无人机100s内的轨迹如下图所示：  
+
+<div align="center">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/mobility_model.png" width="700px">
+</div>
