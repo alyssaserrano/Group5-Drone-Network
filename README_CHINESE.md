@@ -149,3 +149,11 @@ git clone https://github.com/Zihao-Felix-Zhou/UavNetSim-v1.git
 <div align="center">
 <img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/transmitting_procedure.png" width="700px">
 </div>
+
+## 模块概述
+### 路由协议
+数据包路由在无人机通信网络中扮演着重要的角色, 能够帮助不同无人机节点之间实现协同. 在该项目中, 我们实现了如**贪心地理路由**, **梯度路由**, **DSDV, OPAR**, 以及一些 **基于强化学习的路由协议**. 下图展示了数据包路由的基本流程. 更多的细节可以参考对应的文献 [1]-[5].
+
+<div align="center">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/routing.png" width="700px">
+</div>
