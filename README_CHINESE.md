@@ -158,3 +158,14 @@ git clone https://github.com/Zihao-Felix-Zhou/UavNetSim-v1.git
 <div align="center">
 <img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/routing.png" width="700px">
 </div>
+
+### 媒体接入控制协议
+在该项目中，目前我们已经实现了CSMA/CA以及纯Aloha两种MAC协议。我将简要概述在这个项目中实现的版本，并重点介绍如何在这个项目中实现信号干扰和碰撞。下图展示了一个基础版CSMA/CA（不包括RTS/CTS机制）协议下数据包传输的例子。当无人机想要传输一个数据包时：  
+1. 其首先需要等待直到信道空闲
+2. 当信道空闲时，该无人机将会启动计时器，并等待 ```DIFS+backoff``` 段时间，其中退避时间的长短和重传次数有关
+3. 如果计时器倒数至0了且都没有被打断，那么该无人机就能够占用该信道并开始发送包
+4. 如果计时器在倒数过程中被打断，这意味着该无人机此轮争用信道失败。该无人机会冻结计时器，等待信道重新变为空闲，之后再重新启动计时器
+
+<div align="center">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/csmaca.png" width="800px">
+</div>
