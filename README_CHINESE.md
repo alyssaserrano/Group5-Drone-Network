@@ -261,3 +261,21 @@ class Drone:
 <div align="center">
 <img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/energy_model.png" width="400px">
 </div>
+
+## 移动控制
+该平台还支持用户设计无人机集群网络的拓扑控制算法。当前版本实现了一种基于虚拟力的拓扑控制算法[9]，融合了区域中心点的吸引力和相邻无人机的排斥力。应用该算法，一个初始的、可能不连通的网络可以自组织成一个双连通网络。上图展示了移动控制后网络拓扑的变化。  
+<div align="center">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/virtual_force.png" width="800px">
+</div>
+
+如何使用？在```entities/drone.py```中，将```mobility_model```替换为```motion_controller```:  
+```python
+from topology.virtual_force.vf_motion_control import VfMotionController
+
+class Drone:
+  def __init__(self, env, node_id, coords, speed, inbox, simulator):
+    ...
+    # self.mobility_model = GaussMarkov3D(self)  REMEMBER TO COMMENT THIS SENTENCE OUT!
+    self.motion_controller = VfMotionController(self)
+    ...
+```
