@@ -279,3 +279,37 @@ class Drone:
     self.motion_controller = VfMotionController(self)
     ...
 ```
+
+## 可视化
+该平台支持数据包传输过程的交互式可视化，以及展示无人机的飞行轨迹及网络拓扑结构。在这里，我要感谢@superboySB（戴子彭博士）为这个功能做出的贡献！  
+
+<div align="center">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/visualization.gif" width="900px">
+</div>
+
+用户可以在```main.py``` 中启用该可视化功能：  
+```python
+import simpy
+from utils import config
+from simulator.simulator import Simulator
+from visualization.visualizer import SimulationVisualizer
+
+if __name__ == "__main__":
+    # Simulation setup
+    env = simpy.Environment()
+    channel_states = {i: simpy.Resource(env, capacity=1) for i in range(config.NUMBER_OF_DRONES)}
+    sim = Simulator(seed=2025, env=env, channel_states=channel_states, n_drones=config.NUMBER_OF_DRONES)
+    
+    # Add the visualizer to the simulator
+    # Use 20000 microseconds (0.02s) as the visualization frame interval
+    visualizer = SimulationVisualizer(sim, output_dir=".", vis_frame_interval=20000)
+    visualizer.run_visualization()
+
+    # Run simulation
+    env.run(until=config.SIM_TIME)
+    
+    # Finalize visualization
+    visualizer.finalize()
+```
+
+在这个项目的当前版本中，当用户运行```main.py```时，程序将显示无人机的初始位置分布图，然后关闭窗口，程序将继续运行。当仿真结束时，将显示无人机的飞行轨迹和无人机的最终位置，关闭这些窗口并等待一段时间，将显示交互窗口。
