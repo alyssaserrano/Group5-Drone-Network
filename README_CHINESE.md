@@ -254,4 +254,10 @@ class Drone:
 
     ...
 ```
-在执行完 ```scatter_plot_with_obstacles``` 函数之后，您将会看到障碍物以及对应的路径，如上图所示。
+在执行完 ```scatter_plot_with_obstacles``` 函数之后，您将会看到障碍物以及对应的路径，如上图所示。  
+
+## 能量模型
+我们平台中目前所采用的无人机能量消耗模型基于Y. Zeng等人的文献 [8]。下图展示了不同飞行速度对应的功率消耗。因此飞行过程中的能量消耗就等于功率消耗乘以该速度下的飞行时间。  
+<div align="center">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/energy_model.png" width="400px">
+</div>
