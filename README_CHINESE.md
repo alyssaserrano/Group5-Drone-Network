@@ -204,3 +204,54 @@ git clone https://github.com/Zihao-Felix-Zhou/UavNetSim-v1.git
 <div align="center">
 <img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/a_star_path_planning.png" width="700px">
 </div>
+
+如何使用？如何您想在环境中增加障碍物，您可以去 ```simulator/simulator.py```:
+```python
+from entities.obstacle import SphericalObstacle, CubeObstacle
+
+...
+
+self.grid = grid_map()
+self.obstacle_type = set()
+
+# create spherical obstacle
+num_of_spherical_obst = 2
+center_list_so = [[200, 100, 30], [50, 10, 5]]
+radius_list_so = [30, 10]
+for i in range(num_of_spherical_obst):
+    obst = SphericalObstacle(center_list_so[i], radius_list_so[i])
+    obst.add_to_grid(self.grid)
+    self.obstacle_type.add(obst.id)
+
+# create cube obstacle
+number_of_cube_obst = 3
+center_list_co = [[50,50,1], [100,60,1],[160,96,1]]
+length_list_co = [30, 10, 15]
+width_list_co = [15, 15, 20]
+height_list_co = [10, 20, 30]
+for j in range(number_of_cube_obst):
+    obst = CubeObstacle(center_list[j], length_list_co[j], width_list_co[j], height_list_co[j])
+    obst.add_to_grid(self.grid)
+    self.obstacle_type.add(obst.id)
+```
+
+在增加完障碍物之后，每一个无人机就可以调用路径规划算法去决定其最优路径 (在```entities/drone.py```中):
+```python
+from path_planning.astar import astar  # NOTE: REMEMBER TO IMPORT THE CORRESPONDING MODULE
+from path_planning.path_following_3d import PathFollowing3D
+from visualization.static_drawing import scatter_plot_with_obstacles
+
+...
+
+class Drone:
+    ...
+
+    path = astar.a_star_3d(self.start_coords, end_pos, self.simulator.grid)
+    scatter_plot_with_obstacles(self.simulator, self.simulator.grid, [path])  # optional
+
+    # the mobility model
+    self.mobility_model = PathFollowing3D(self, path)
+
+    ...
+```
+在执行完 ```scatter_plot_with_obstacles``` 函数之后，您将会看到障碍物以及对应的路径，如上图所示。
