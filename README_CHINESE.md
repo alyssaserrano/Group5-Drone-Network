@@ -197,3 +197,10 @@ git clone https://github.com/Zihao-Felix-Zhou/UavNetSim-v1.git
 <div align="center">
 <img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/mobility_model.png" width="700px">
 </div>
+
+## 3D路径规划
+我们的UavNetSim-v1平台现已支持对无人机三维路径规划算法的设计与测试。目前我们所实现的baseline是A*算法，后续我们也将会持续增加更多的baseline，例如Dijkstra, DFS, BFS以及一些基于深度强化学习的路径规划算法。
+
+<div align="center">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/a_star_path_planning.png" width="700px">
+</div>
