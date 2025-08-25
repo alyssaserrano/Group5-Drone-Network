@@ -8,15 +8,13 @@
   <img src="https://img.shields.io/badge/Github-%40Zihao--Felix--Zhou-blue" height="20">
   <img src="https://img.shields.io/badge/License-MIT-brightgreen" height="20">
   <img src="https://img.shields.io/badge/Version-V1.0-orange" height="20">
-  <img src="https://img.shields.io/badge/Contributions-Welcome-yellowgreen" height="20">  
-  <img src="https://img.shields.io/badge/Promotion-HelloGitHub-purple" height="20">
-
- 
+  <img src="https://img.shields.io/badge/Contributions-Welcome-yellowgreen" height="20"> 
+  <a href="https://hellogithub.com/repository/Zihao-Felix-Zhou/UavNetSim-v1" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=51f926ec044046afb3ed23a912421445&claim_uid=yc7sS80jimthluU&theme=small" alt="Featured｜HelloGitHub" /></a>
 
   <h3>Make simulation more friendly to novices! </h3>
 </div>
 
-Read this in other language: [中文(翻译中)](README_CHINESE.md)
+Read this in other language: [中文](README_CHINESE.md)
 
 This Python-based simulation platform provides a realistic and comprehensive modeling of various components in UAV networks, including the network layer, MAC layer, physical layer, as well as UAV mobility and energy models. Moreover, the platform is highly extensible, allowing users to customize and develop their own protocols to suit diverse application requirements. <br>  
 

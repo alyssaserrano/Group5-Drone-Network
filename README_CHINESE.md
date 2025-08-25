@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/License-MIT-brightgreen" height="20">
   <img src="https://img.shields.io/badge/Version-V1.0-orange" height="20">
   <img src="https://img.shields.io/badge/Contributions-Welcome-yellowgreen" height="20">
-  <img src="https://img.shields.io/badge/Promotion-HelloGitHub-purple" height="20">
+  <a href="https://hellogithub.com/repository/Zihao-Felix-Zhou/UavNetSim-v1" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=51f926ec044046afb3ed23a912421445&claim_uid=yc7sS80jimthluU&theme=small" alt="Featured｜HelloGitHub" /></a>
  
 
   <h3>让仿真对新手更友好! </h3>
@@ -197,3 +197,187 @@ git clone https://github.com/Zihao-Felix-Zhou/UavNetSim-v1.git
 <div align="center">
 <img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/mobility_model.png" width="700px">
 </div>
+
+## 3D路径规划
+我们的UavNetSim-v1平台现已支持对无人机三维路径规划算法的设计与测试。目前我们所实现的baseline是A*算法，后续我们也将会持续增加更多的baseline，例如Dijkstra, DFS, BFS以及一些基于深度强化学习的路径规划算法。
+
+<div align="center">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/a_star_path_planning.png" width="700px">
+</div>
+
+如何使用？如何您想在环境中增加障碍物，您可以去 ```simulator/simulator.py```:
+```python
+from entities.obstacle import SphericalObstacle, CubeObstacle
+
+...
+
+self.grid = grid_map()
+self.obstacle_type = set()
+
+# create spherical obstacle
+num_of_spherical_obst = 2
+center_list_so = [[200, 100, 30], [50, 10, 5]]
+radius_list_so = [30, 10]
+for i in range(num_of_spherical_obst):
+    obst = SphericalObstacle(center_list_so[i], radius_list_so[i])
+    obst.add_to_grid(self.grid)
+    self.obstacle_type.add(obst.id)
+
+# create cube obstacle
+number_of_cube_obst = 3
+center_list_co = [[50,50,1], [100,60,1],[160,96,1]]
+length_list_co = [30, 10, 15]
+width_list_co = [15, 15, 20]
+height_list_co = [10, 20, 30]
+for j in range(number_of_cube_obst):
+    obst = CubeObstacle(center_list[j], length_list_co[j], width_list_co[j], height_list_co[j])
+    obst.add_to_grid(self.grid)
+    self.obstacle_type.add(obst.id)
+```
+
+在增加完障碍物之后，每一个无人机就可以调用路径规划算法去决定其最优路径 (在```entities/drone.py```中):
+```python
+from path_planning.astar import astar  # NOTE: REMEMBER TO IMPORT THE CORRESPONDING MODULE
+from path_planning.path_following_3d import PathFollowing3D
+from visualization.static_drawing import scatter_plot_with_obstacles
+
+...
+
+class Drone:
+    ...
+
+    path = astar.a_star_3d(self.start_coords, end_pos, self.simulator.grid)
+    scatter_plot_with_obstacles(self.simulator, self.simulator.grid, [path])  # optional
+
+    # the mobility model
+    self.mobility_model = PathFollowing3D(self, path)
+
+    ...
+```
+在执行完 ```scatter_plot_with_obstacles``` 函数之后，您将会看到障碍物以及对应的路径，如上图所示。  
+
+## 能量模型
+我们平台中目前所采用的无人机能量消耗模型基于Y. Zeng等人的文献 [8]。下图展示了不同飞行速度对应的功率消耗。因此飞行过程中的能量消耗就等于功率消耗乘以该速度下的飞行时间。  
+<div align="center">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/energy_model.png" width="400px">
+</div>
+
+## 移动控制
+该平台还支持用户设计无人机集群网络的拓扑控制算法。当前版本实现了一种基于虚拟力的拓扑控制算法[9]，融合了区域中心点的吸引力和相邻无人机的排斥力。应用该算法，一个初始的、可能不连通的网络可以自组织成一个双连通网络。上图展示了移动控制后网络拓扑的变化。  
+<div align="center">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/virtual_force.png" width="800px">
+</div>
+
+如何使用？在```entities/drone.py```中，将```mobility_model```替换为```motion_controller```:  
+```python
+from topology.virtual_force.vf_motion_control import VfMotionController
+
+class Drone:
+  def __init__(self, env, node_id, coords, speed, inbox, simulator):
+    ...
+    # self.mobility_model = GaussMarkov3D(self)  REMEMBER TO COMMENT THIS SENTENCE OUT!
+    self.motion_controller = VfMotionController(self)
+    ...
+```
+
+## 可视化
+该平台支持数据包传输过程的交互式可视化，以及展示无人机的飞行轨迹及网络拓扑结构。在这里，我要感谢@superboySB（戴子彭博士）为这个功能做出的贡献！  
+
+<div align="center">
+<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/visualization.gif" width="900px">
+</div>
+
+用户可以在```main.py``` 中启用该可视化功能：  
+```python
+import simpy
+from utils import config
+from simulator.simulator import Simulator
+from visualization.visualizer import SimulationVisualizer
+
+if __name__ == "__main__":
+    # Simulation setup
+    env = simpy.Environment()
+    channel_states = {i: simpy.Resource(env, capacity=1) for i in range(config.NUMBER_OF_DRONES)}
+    sim = Simulator(seed=2025, env=env, channel_states=channel_states, n_drones=config.NUMBER_OF_DRONES)
+    
+    # Add the visualizer to the simulator
+    # Use 20000 microseconds (0.02s) as the visualization frame interval
+    visualizer = SimulationVisualizer(sim, output_dir=".", vis_frame_interval=20000)
+    visualizer.run_visualization()
+
+    # Run simulation
+    env.run(until=config.SIM_TIME)
+    
+    # Finalize visualization
+    visualizer.finalize()
+```
+
+在这个项目的当前版本中，当用户运行```main.py```时，程序将显示无人机的初始位置分布图，然后关闭窗口，程序将继续运行。当仿真结束时，将显示无人机的飞行轨迹和无人机的最终位置，关闭这些窗口并等待一段时间，将显示交互窗口。  
+
+## 表现评估
+我们的 "UavNetSim-v1" 平台支持对多种指标的统计，如：  
+
+- **Packet Delivery Ratio (PDR)**: PDR是所有目的地无人机成功接收到的数据包总数与所有源无人机产生的数据包总数的比值。值得注意的是，PDR的计算中排除了冗余数据包 (即重传的数据包)。PDR可以反映路由协议的可靠性。
+- **Average End-to-End Delay (E2E Delay)**: 端到端延迟是数据包从源节点到达目的节点的平均时间延迟。通常，数据包传输中的延迟包括“排队延迟”、“接入延迟”、“传输延迟”、“传播延迟”和“处理延迟”。
+- **Normalized Routing Load (NRL)**: NRL是所有无人机发送的所有路由控制数据包与目的无人机接收到的数据包数量的比值。
+- **Average Throughput**: 在我们的平台中，吞吐量的计算是：每当目的地接收到一个数据包时，数据包的长度除以该数据包的端到端延迟（因为端到端延迟涉及该数据包的重传）。
+- **Hop Count**: 跳数是数据包传输过程中所经过的中间节点的数量。
+
+## 设计你自己的协议
+我们的仿真平台可以根据您的研究需求进行扩展，包括设计您自己的无人机移动模型（在```mobility```文件夹中），mac协议（在```mac```文件夹中），路由协议（在```routing```文件夹中），等等。我们以路由协议为例，介绍用户如何设计自己的算法。  
+
+* 在 ```routing```文件夹下创建一个新的package
+* 路由协议的主程序必须包括```def next_hop_selection(self, packet)``` 和 ```def packet_reception(self, packet, src_drone_id)```两个函数
+* 在确认路由逻辑正确后，您可以在```drone.py```中导入您自己的路由模块：
+ ```python
+   from routing.dsdv.dsdv import Dsdv  # import your module
+   ...
+   class Drone:
+     def __init__(self, env, node_id, coords, speed, inbox, simulator):
+       ...
+       self.routing_protocol = Dsdv(self.simulator, self)  # install
+       ...
+   ```
+
+## 参考文献
+[1] C. Perkins and P. Bhagwat, "[Highly dynamic destination-sequenced distance-vector routing (DSDV) for mobile computers](https://dl.acm.org/doi/abs/10.1145/190809.190336)," in *ACM SIGCOMM Computer Communication Review*, vol. 24, no. 4, pp. 234-244, 1994.  
+[2] R. Poor, "Gradient routing in ad hoc networks", 2000, [www.media.mit.edu/pia/Research/ESP/texts/poorieeepaper.pdf](www.media.mit.edu/pia/Research/ESP/texts/poorieeepaper.pdf)  
+[3] J. Boyan and M. Littman, "[Packet routing in dynamically changing networks: A reinforcement learning approach](https://proceedings.neurips.cc/paper/1993/hash/4ea06fbc83cdd0a06020c35d50e1e89a-Abstract.html)" in *Advances in Neural Information Processing Systems*, vol. 6, 1993.  
+[4] W. S. Jung, J. Yim and Y. B. Ko, "[QGeo: Q-learning-based geographic ad hoc routing protocol for unmanned robotic networks](https://ieeexplore.ieee.org/abstract/document/7829268/)," in *IEEE Communications Letters*, vol. 21, no. 10, pp. 2258-2261, 2017.  
+[5] M. Gharib, F. Afghah and E. Bentley, "[Opar: Optimized predictive and adaptive routing for cooperative uav networks](https://ieeexplore.ieee.org/abstract/document/9484489)," in *IEEE INFOCOM 2021-IEEE Conference on Computer Communications Workshops (INFOCOM WKSHPS)*, pp. 1-6, 2021.  
+[6] A. Colvin, "[CSMA with collision avoidance](cn.overleaf.com/project/678e52bd44cc7c6c70e39d90)," *Computer Communications*, vol. 6, no. 5, pp. 227-235, 1983.  
+[7] N. Abramson, "[The ALOHA system: Another alternative for computer communications](n.overleaf.com/project/678e52bd44cc7c6c70e39d90)," in *Proceedings of the November 17-19, 1970, Fall Joint Computer Conference*, pp. 281-285, 1970.  
+[8] Y. Zeng, J. Xu and R. Zhang, "[Energy minimization for wireless communication with rotary-wing UAV](https://ieeexplore.ieee.org/document/8663615)," in *IEEE transactions on wireless communications*, vol. 18, no. 4, pp. 2329-2345, 2019.  
+[9] H. Liu, X. Chu, Y. -W. Leung and R. Du, "[Simple movement control algorithm for bi-connectivity in robotic sensor networks](https://ieeexplore.ieee.org/document/5555924)," in *IEEE Journal on Selected Areas in Communications*, vol. 28, no. 7, pp. 994-1005, 2010.  
+
+## 贡献
+欢迎大家对该平台提交新的功能！
+
+## 如何引用该工作
+如何您觉得该项目对您的科研带来了帮助，欢迎引用我们的论文：
+```
+@inproceedings{zhou2025uavnetsim,
+    title={UavNetSim-v1: A Python-based Simulation Platform for UAV Communication Networks},
+    author={Zhou, Zihao and Dai, Zipeng and Huang, Linyi and Yang, Cui and Xiang, Youjun and Tang, Jie and Wong, Kai-kit},
+    booktitle={14-th IEEE/CIC International Conference on Communications in China},
+    address = {Shanghai, China},
+    month = {August},
+    year = {2025}
+}
+```
+或 
+```
+@article{zhou2025uavnetsim,
+  title={UavNetSim-v1: A Python-based Simulation Platform for UAV Communication Networks},
+  author={Zhou, Zihao and Dai, Zipeng and Huang, Linyi and Yang, Cui and Xiang, Youjun and Tang, Jie and Wong, Kai-kit},
+  journal={arXiv preprint arXiv:2507.09852},
+  year={2025}
+}
+```
+
+## 支持与鼓励
+如果您觉得该项目有帮助，欢迎给一个star！
+
+## License
+This project is MIT-licensed.
+
