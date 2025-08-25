@@ -181,7 +181,7 @@ class QMR:
                 else:
                     pass
 
-        elif isinstance(packet, QMRAckPacket):
+        elif isinstance(packet, QMRAckPacket): 
             original_packet = packet.ack_packet
 
             cur_time = self.simulator.env.now
