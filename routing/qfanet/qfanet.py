@@ -9,7 +9,7 @@
 '''
 import copy
 import random
-
+from utils.util_function import has_intersection
 from phy.large_scale_fading import general_path_loss, sinr_calculator
 from simulator.log import logger
 from entities.packet import DataPacket
@@ -47,7 +47,7 @@ class QFanet:
 
         self.simulator.env.process(self.broadcast_hello_packet_periodically())
         self.simulator.env.process(self.check_waiting_list())
-
+        self.env = simulator.env
     def broadcast_hello_packet(self):
         """Generate Hello packet"""
         config.GL_ID_HELLO_PACKET += 1
@@ -222,7 +222,7 @@ class QFanet:
     def cal_p2p_sinr(self, data_packet, previous_drone_id):
         """Calculate point to point sinr"""
         main_drones_list = [[previous_drone_id, data_packet.channel_id]]
-        all_transmitting = self.my_drone.get_current_transmitting_nodes()
+        all_transmitting = self.get_current_transmitting_nodes()
         sinr_list = sinr_calculator(self.my_drone, main_drones_list, all_transmitting)
         current_sinr = sinr_list[0]  # only one main transmitter
         return current_sinr
@@ -237,3 +237,18 @@ class QFanet:
             reward=self.r_min,
             sinr_eta=0
         )
+
+    def get_current_transmitting_nodes(self):
+        """Get all the nodes that are currently transmitting"""
+        transmitting_nodes = []
+        for drone in self.simulator.drones:
+            for item in drone.inbox:
+                packet = item[0]
+                insertion_time = item[1]
+                transmitter = item[2]
+                channel_used = item[4]
+                transmitting_time = packet.packet_length / config.BIT_RATE * 1e6
+                interval = [insertion_time, insertion_time + transmitting_time]
+                if has_intersection(interval, [self.env.now, self.env.now]):
+                    transmitting_nodes.append([transmitter, channel_used])
+        return [list(x) for x in {tuple(i) for i in transmitting_nodes}]
