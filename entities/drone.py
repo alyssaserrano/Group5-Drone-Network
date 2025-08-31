@@ -152,7 +152,8 @@ class Drone:
 
                 # data packet length
                 if config.VARIABLE_PAYLOAD_LENGTH:
-                    fluctuation = self.rng_drone.randint(-config.MAXIMUM_PAYLOAD_VARIATION, config.MAXIMUM_PAYLOAD_VARIATION)
+                    fluctuation = self.rng_drone.randint(-config.MAXIMUM_PAYLOAD_VARIATION,
+                                                         config.MAXIMUM_PAYLOAD_VARIATION)
                     payload_length = config.AVERAGE_PAYLOAD_LENGTH + fluctuation
                 else:
                     payload_length = config.AVERAGE_PAYLOAD_LENGTH  # in bit, 1024 bytes
@@ -232,7 +233,8 @@ class Drone:
 
                         if self.env.now < packet.creation_time + packet.deadline:  # this packet has not expired
                             if isinstance(packet, DataPacket):
-                                if packet.number_retransmission_attempt[self.identifier] < config.MAX_RETRANSMISSION_ATTEMPT:
+                                if packet.number_retransmission_attempt[
+                                    self.identifier] < config.MAX_RETRANSMISSION_ATTEMPT:
                                     # it should be noted that "final_packet" may be the data packet itself or a control
                                     # packet, depending on whether the routing protocol can find an appropriate next hop
                                     has_route, final_packet, enquire = self.routing_protocol.next_hop_selection(packet)
@@ -295,7 +297,7 @@ class Drone:
                 # every time the drone initiates a data packet transmission, "mac_process_count" will be increased by 1
                 self.mac_process_count += 1
 
-                key=''.join(['mac_send', str(self.identifier), '_', str(pkd.packet_id)])
+                key = ''.join(['mac_send', str(self.identifier), '_', str(pkd.packet_id)])
 
                 mac_process = self.env.process(self.mac_protocol.mac_send(pkd))
                 self.mac_process_dict[key] = mac_process
@@ -371,8 +373,9 @@ class Drone:
                         if pkd.get_current_ttl() < config.MAX_TTL:
                             sender = all_drones_send_to_me[which_one][0]
 
-                            logger.info('At time: %s (us) ---- Packet %s from UAV: %s is received by UAV: %s, sinr is: %s',
-                                        self.env.now, pkd.packet_id, sender, self.identifier, max_sinr)
+                            logger.info(
+                                'At time: %s (us) ---- Packet %s from UAV: %s is received by UAV: %s, sinr is: %s',
+                                self.env.now, pkd.packet_id, sender, self.identifier, max_sinr)
 
                             yield self.env.process(self.routing_protocol.packet_reception(pkd, sender))
                         else:
@@ -447,3 +450,18 @@ class Drone:
                 pass
 
         return flag, all_drones_send_to_me, time_span, potential_packet
+
+    def get_current_transmitting_nodes(self):
+        """Get all the nodes that are currently transmitting"""
+        transmitting_nodes = []
+        for drone in self.simulator.drones:
+            for item in drone.inbox:
+                packet = item[0]
+                insertion_time = item[1]
+                transmitter = item[2]
+                channel_used = item[4]
+                transmitting_time = packet.packet_length / config.BIT_RATE * 1e6
+                interval = [insertion_time, insertion_time + transmitting_time]
+                if has_intersection(interval, [self.env.now, self.env.now]):
+                    transmitting_nodes.append([transmitter, channel_used])
+        return [list(x) for x in {tuple(i) for i in transmitting_nodes}]
