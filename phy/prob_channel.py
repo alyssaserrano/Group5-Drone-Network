@@ -64,7 +64,7 @@ if __name__ == "__main__":
                      1: [],
                      2: [],
                      3: [],
-                     4: [],}  # two fake drones
+                     4: []}  # two fake drones
 
     print("[TEST] Sending packet...")
     channel.unicast_put(["test_packet", 0, "drone0"], 1)
@@ -87,6 +87,7 @@ if __name__ == "__main__":
     for i in [1, 3, 4]:
         print(f"Drone {i} inbox:", channel.pipes[i])
     print("\n")
+    
     
     
 
