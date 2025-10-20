@@ -1,6 +1,8 @@
 import logging
 from utils import config
 from .tech_profiles import wifi_11n  # Import tech_profiles.py file that has our wifi objects.
+from .tech_profiles import wifi_11ac
+from .tech_profiles import wifi_direct
 
 # config logging
 logging.basicConfig(filename='running_log.log',
