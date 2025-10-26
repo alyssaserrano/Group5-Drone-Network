@@ -1,16 +1,17 @@
 """What must be implemented
  - Queue management
  - Neighbor table
- - CSMA/CA flow (sense -> backoff -> transmit
+ - CSMA/CA flow (sense -> backoff -> transmit)
  - ACK/retry
  - Beacons handling
  - Metrics
  """
+import random
 import time
 from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 
 class FrameType(Enum):
@@ -18,9 +19,9 @@ class FrameType(Enum):
     ACK = 2
     BEACON = 3
 
-class NodeType(Enum):
-    DRONE = 1
-    GROUND_SENSOR = 2
+class DroneRole(Enum):
+    COMMAND_CONTROL = 1
+    WORKER_DRONE = 2
 
 @dataclass
 class MACFrame:
@@ -36,17 +37,18 @@ class MACFrame:
 @dataclass
 class Neighbor:
     node_id: str
-    node_type: NodeType
+    role: DroneRole
     last_seen: float
     signal_strength: float = 1.0
+    position: Optional[Tuple[float, float, float]] = None
 
 # ---------------------------------------------------------------------------------------------------------------------
 # QUEUE MANAGEMENT
 # ---------------------------------------------------------------------------------------------------------------------
 class MACQueue:
     """
-    Simple FIFO queue with capacity limit.
-    When the queue is full drops the oldest frame automatically.
+    FIFO queue with limited capacity.
+    When the queue is full, it drops the oldest frame automatically.
     """
 
     def __init__(self, max_capacity: int = 100):
@@ -54,7 +56,7 @@ class MACQueue:
         Initializes the queue.
 
         Args:
-            max_capacity: Maximun number of frames the queue can hold.
+            max_capacity: Maximum number of frames the queue can hold.
         """
         self.transmissions_queue = deque(maxlen=max_capacity)
         self.max_capacity = max_capacity
@@ -107,7 +109,8 @@ class MACQueue:
 # ---------------------------------------------------------------------------------------------------------------------
 class NeighborTable:
     """
-    Keep track of nearby nodes using beacons.
+    C&C drone keeps track of all worker drones.
+    Worker drone only tracks C&C drone.
     """
     def __init__(self, expiry_timeout: float = 10.0):
         """
@@ -118,17 +121,24 @@ class NeighborTable:
         """
         self.neighbor_table = {}
         self.expiry_timeout = expiry_timeout
+        self.cnd_drone_id = None
 
-    def add_or_update(self, node_id: str, node_type: NodeType, signal_strength: float = 1.0):
+    def add_or_update(self, node_id: str, role: DroneRole, signal_strength: float = 1.0,
+                      position: Optional[Tuple[float, float, float]] = None):
         """
         Add new neighbor or update existing one.
 
         Args:
             node_id: Unique identifier
-            node_type: DRONE or GROUND_SENSOR
+            role: C&C or WORKER
             signal_strength: default 1.0
+            position: Current position of the drone
         """
         current_time = time.time()
+
+        # Tracks if it is the C&C drone.
+        if role == DroneRole.COMMAND_CONTROL:
+            self.cnd_drone_id = node_id
 
         # Check if neighbor already exists in the table
         if node_id in self.neighbor_table:
@@ -136,15 +146,25 @@ class NeighborTable:
             neighbor = self.neighbor_table[node_id]
             neighbor.last_seen = current_time        # Update timestamp
             neighbor.signal_strength = signal_strength
+            if position:
+                neighbor.position = position
         else:
             # New neighbor, add it
-            new_neighbor = Neighbor(
+            self.neighbor_table[node_id] = Neighbor(
                 node_id = node_id,
-                node_type = node_type,
-                last_seen = time.time(),
-                signal_strength = signal_strength
+                role = role,
+                last_seen = current_time,
+                signal_strength = signal_strength,
+                position = position
             )
-            self.neighbor_table[node_id] = new_neighbor
+
+    def get_cnd_drone(self) -> Optional[Neighbor]:
+        """
+        Get the C&C drone information, will be used by workers to find their hub
+        """
+        if self.cnd_drone_id and self.cnd_drone_id in self.neighbor_table:
+            return self.neighbor_table[self.cnd_drone_id]
+        return None
 
     def get_active(self) -> List[Neighbor]:
         """
@@ -183,6 +203,21 @@ class NeighborTable:
 
         return len(expired_neighbors)
 
+    def get_signal_strenght_to_cnd(self) -> float:
+        """
+        Get signal strength to C&C drone. Used by worker drones to decide if
+        they need to move closer to the C&C before transmitting data.
+
+        Returns:
+            Signal strength to C&C (0.0-1.0)
+            0.0 if C&C is not found
+        """
+        cnd = self.get_cnd_drone()              # Get C&C neighbor entry
+
+        # if C&C is found, return its signal strength
+        # Otherwise return 0.0 (no connection)
+        return cnd.signal_strength if cnd else 0.0
+
 # ---------------------------------------------------------------------------------------------------------------------
 # CSMA/CA
 # ---------------------------------------------------------------------------------------------------------------------
@@ -190,6 +225,73 @@ class CMSACA:
     """
     Implements the Carrier Sense Multiple Access with Collision Avoidance CMSA/CA protocol.
     """
+    # -----------------------------------------------------------
+    # Is the communication channel being implemented by another layer?????
+    # -----------------------------------------------------------
+    def __init__(self, channel: SharedChannel, min_backoff: float = 0.01, max_backoff: float = 0.1):
+        """
+        Initialize CSMA/CA controller
+
+        Args:
+            channel: Shared channel to transmit data on
+            min_backoff: Minimum backoff time in seconds.
+            max_backoff: Maximum backoff time in seconds.
+        """
+        self.channel = channel
+        self.min_backoff = min_backoff
+        self.max_backoff = max_backoff
+        self.current_backoff = min_backoff                  # Starts at minimum
+
+    def transmit_with_csma(self, frame: MACFrame):
+        """
+        Attempt to transmit a frame using CSMA/CA
+
+        Args:
+            frame: The MAC Frame to be transmitted
+
+        Returns:
+            True - if the transmission was successful
+            False - if the transmission was deferred (busy channel)
+        """
+        # Initial carrier sense - check if channel is busy
+        if self.channel.is_busy():
+            # Channel is busy, defer transmission and try again later
+            return False
+
+        # Calculate random backoff time to prevent multiple drones from transmitting simultaneously
+        backoff_time = random.uniform(0, self.current_backoff)
+
+        # Wait the backoff time, gives other drones an opportunity to access the channel
+        # Spreads out transmissions to avoid collisions
+        time.sleep(backoff_time)
+
+        # Final carrier sense, double-check the channel is available
+        if self.channel.is_busy():
+            # Channel became busy during backoff, delay transmission
+            return False
+
+        # Channel is available, safe to transmit
+        self.channel.transmit(frame)
+
+        # Return success
+        return True
+
+    def increase_backoff(self):
+        """
+        Double the backoff window after collision or failure.
+
+        Returns:
+            Float with the new backoff time.
+        """
+        # Double current backoff, do not exceed the maximum
+        self.current_backoff = min(self.current_backoff * 2, self.max_backoff)
+
+    def reset_backoff(self):
+        """
+        Reset backoff window after a successful transmission.
+        """
+        self.current_backoff = self.min_backoff
+
 
 # ---------------------------------------------------------------------------------------------------------------------
 # ACK AND RETRY LOGIC
