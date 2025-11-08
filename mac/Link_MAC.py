@@ -11,7 +11,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Callable
 
 
 class FrameType(Enum):
@@ -218,6 +218,33 @@ class NeighborTable:
         # Otherwise return 0.0 (no connection)
         return cnd.signal_strength if cnd else 0.0
 
+
+# ---------------------------------------------------------------------------------------------------------------------
+# SHARED CHANNEL SIMULATION (MOCK)
+# ---------------------------------------------------------------------------------------------------------------------
+class SharedChannel:
+    """
+    MOCK: A simple representation of a shared communication channel.
+    Required for CMSACA to function as designed.
+    """
+    def __init__(self):
+        self._is_busy = False
+
+    def is_busy(self) -> bool:
+        """Simulate carrier sense."""
+        return self._is_busy
+
+    def transmit(self, frame: MACFrame):
+        """Simulate transmitting a frame."""
+        # In a real simulation, this would send the frame to a list of receivers
+        # For this implementation, we just mark the channel as busy for a moment
+        self._is_busy = True
+        # In a real scenario, the time to transmit would be based on frame size
+        # time.sleep(0.005) 
+        self._is_busy = False
+        print(f"[CHANNEL] Transmitting {frame.frame_type.name} from {frame.source} to {frame.dest or 'Broadcast'} (Seq:{frame.seq_num}, Retries:{frame.retry_count})")
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 # CSMA/CA
 # ---------------------------------------------------------------------------------------------------------------------
@@ -300,6 +327,105 @@ class AckRetry:
     """
     Handles the ACKs and retransmissions.
     """
+    def __init__(self, mac_queue: MACQueue, csma_controller: CMSACA, max_retries: int = 3, ack_timeout: float = 0.05):
+        """
+        Initializes ACK/Retry handler.
+
+        Args:
+            mac_queue: The queue to put frames back into for retransmission.
+            csma_controller: The CSMA/CA controller for backoff management.
+            max_retries: Maximum number of times to retry a frame.
+            ack_timeout: Time to wait for an ACK before considering it a failure.
+        """
+        self.mac_queue = mac_queue
+        self.csma_controller = csma_controller
+        self.max_retries = max_retries
+        self.ack_timeout = ack_timeout
+        # Stores frames waiting for an ACK: { (dest, seq_num): MACFrame }
+        self.pending_acks: Dict[Tuple[str, int], MACFrame] = {}
+
+    def is_awaiting_ack(self, frame: MACFrame) -> bool:
+        """Check if an ACK is expected for a given frame."""
+        if not frame.dest:
+            return False # Broadcasts don't need ACKs in this simple model
+        return (frame.dest, frame.seq_num) in self.pending_acks
+
+    def register_sent_frame(self, frame: MACFrame):
+        """Register a frame as sent and awaiting ACK."""
+        if frame.dest: # Only track frames sent to a specific destination
+            self.pending_acks[(frame.dest, frame.seq_num)] = frame
+
+    def process_ack(self, ack_frame: MACFrame) -> bool:
+        """
+        Process a received ACK frame.
+
+        Args:
+            ack_frame: The MACFrame containing the ACK.
+
+        Returns:
+            True if the ACK matched a pending frame and was successfully processed.
+        """
+        if ack_frame.frame_type != FrameType.ACK:
+            return False
+
+        # The ACK is for a frame *sent* by the ACK receiver, so the ACK's source is the original frame's destination
+        key = (ack_frame.source, ack_frame.seq_num) 
+        
+        if key in self.pending_acks:
+            del self.pending_acks[key]
+            self.csma_controller.reset_backoff() # Successful transmission, reset backoff
+            # print(f"[ACK] Received ACK from {ack_frame.source} for seq {ack_frame.seq_num}. Transmission complete.")
+            return True
+        # print(f"[ACK] Received stray ACK from {ack_frame.source} for seq {ack_frame.seq_num}. (Not pending)")
+        return False
+
+    def check_timeouts_and_retry(self):
+        """
+        Check for pending ACKs that have timed out and handle retransmission/dropping.
+        """
+        current_time = time.time()
+        frames_to_retry: List[MACFrame] = []
+        keys_to_remove: List[Tuple[str, int]] = []
+
+        for key, frame in self.pending_acks.items():
+            if current_time - frame.timestamp > self.ack_timeout:
+                keys_to_remove.append(key)
+                
+                if frame.retry_count < self.max_retries:
+                    frame.retry_count += 1
+                    frame.timestamp = time.time() # Update timestamp for next timeout check
+                    frames_to_retry.append(frame)
+                    self.csma_controller.increase_backoff() # Increase backoff on failed attempt
+                    # print(f"[RETRY] ACK timeout for {key}. Retrying (Attempt {frame.retry_count}).")
+                else:
+                    # print(f"[DROP] Frame {key} dropped after {self.max_retries} retries.")
+                    # In a real system, you would update metrics for dropped frames here
+                    pass
+
+        # Remove timed-out frames from pending list
+        for key in keys_to_remove:
+            if key in self.pending_acks:
+                del self.pending_acks[key]
+
+        # Enqueue frames for retry
+        for frame in frames_to_retry:
+            self.mac_queue.enqueue(frame)
+
+    def create_ack_frame(self, original_frame: MACFrame, node_id: str) -> MACFrame:
+        """
+        Create an ACK frame in response to a received data frame.
+        
+        Args:
+            original_frame: The frame being acknowledged.
+            node_id: The ID of the drone creating the ACK.
+        """
+        return MACFrame(
+            frame_type=FrameType.ACK,
+            source=node_id,
+            dest=original_frame.source,
+            seq_num=original_frame.seq_num,
+            payload=b'' # ACK frames typically have no payload
+        )
 
 # ---------------------------------------------------------------------------------------------------------------------
 # BEACON MANAGER
@@ -308,6 +434,74 @@ class BeaconManager:
     """
     Send periodic broadcast beacons to announce presence to ground stations and other drones in the network.
     """
+    def __init__(self, node_id: str, role: DroneRole, beacon_interval: float = 1.0, 
+                 get_position_func: Callable[[], Optional[Tuple[float, float, float]]] = lambda: None):
+        """
+        Initialize Beacon Manager.
+
+        Args:
+            node_id: Unique identifier of the drone.
+            role: The role of the drone (C&C or WORKER).
+            beacon_interval: Time in seconds between beacon transmissions.
+            get_position_func: A function to call to get the drone's current position.
+        """
+        self.node_id = node_id
+        self.role = role
+        self.beacon_interval = beacon_interval
+        self.last_beacon_time = 0.0
+        self.seq_num_counter = 0
+        self.get_position = get_position_func
+
+    def needs_to_send_beacon(self) -> bool:
+        """Check if it's time to send a new beacon."""
+        return (time.time() - self.last_beacon_time) >= self.beacon_interval
+
+    def create_beacon_frame(self) -> MACFrame:
+        """
+        Create a MACFrame for a beacon. The payload contains the drone's role and position.
+        """
+        self.seq_num_counter += 1
+        self.last_beacon_time = time.time()
+        
+        # Payload format: (role_value, position_tuple_or_None)
+        position = self.get_position()
+        payload = f"{self.role.value},{position or ''}".encode('utf-8')
+
+        return MACFrame(
+            frame_type=FrameType.BEACON,
+            source=self.node_id,
+            dest=None, # Broadcast frame
+            seq_num=self.seq_num_counter,
+            payload=payload
+        )
+
+    @staticmethod
+    def parse_beacon_payload(payload: bytes) -> Optional[Tuple[DroneRole, Optional[Tuple[float, float, float]]]]:
+        """
+        Parse the role and position from a beacon frame's payload.
+        
+        Returns:
+            A tuple of (DroneRole, Optional[PositionTuple]) or None on failure.
+        """
+        try:
+            parts = payload.decode('utf-8').split(',')
+            if not parts or len(parts) < 1:
+                return None
+            
+            role_value = int(parts[0])
+            role = DroneRole(role_value)
+            
+            position = None
+            if len(parts) >= 2 and parts[1]:
+                # Assuming position is encoded as comma-separated floats if available
+                pos_parts = parts[1].strip('() ').split(' ') # Simple split based on common tuple string
+                if len(pos_parts) == 3:
+                    position = (float(pos_parts[0]), float(pos_parts[1]), float(pos_parts[2]))
+            
+            return role, position
+        except Exception as e:
+            # print(f"Error parsing beacon payload: {e}")
+            return None
 
 # ---------------------------------------------------------------------------------------------------------------------
 # METRICS TRACKER
@@ -316,3 +510,92 @@ class Metrics:
     """
     Keep track of performance matrics.
     """
+    def __init__(self, node_id: str):
+        self.node_id = node_id
+        self.start_time = time.time()
+        
+        # Transmission/Reception Counts
+        self.tx_data_frames = 0
+        self.rx_data_frames = 0
+        self.tx_ack_frames = 0
+        self.rx_ack_frames = 0
+        self.tx_beacon_frames = 0
+        self.rx_beacon_frames = 0
+        
+        # CSMA/CA and Retry Performance
+        self.tx_attempts = 0            # Total transmission attempts (before successful CSMA/CA)
+        self.csma_deferrals = 0         # Count of times channel was busy (CSMA sense failed)
+        self.tx_successes = 0           # Frames successfully transmitted (ACK received)
+        self.tx_failures = 0            # Frames dropped after max retries
+        self.total_retries = 0          # Total number of retransmissions
+        self.mac_queue_drops = 0        # Frames dropped due to full MAC queue (from MACQueue)
+
+    def record_tx_attempt(self):
+        """Record a single attempt to transmit a frame via CSMA/CA."""
+        self.tx_attempts += 1
+        
+    def record_csma_deferral(self):
+        """Record a deferred transmission due to a busy channel."""
+        self.csma_deferrals += 1
+
+    def record_transmission(self, frame_type: FrameType):
+        """Record a frame successfully sent out onto the channel (CSMA/CA success)."""
+        if frame_type == FrameType.DATA:
+            self.tx_data_frames += 1
+        elif frame_type == FrameType.ACK:
+            self.tx_ack_frames += 1
+        elif frame_type == FrameType.BEACON:
+            self.tx_beacon_frames += 1
+            
+    def record_reception(self, frame_type: FrameType):
+        """Record a frame successfully received from the channel."""
+        if frame_type == FrameType.DATA:
+            self.rx_data_frames += 1
+        elif frame_type == FrameType.ACK:
+            self.rx_ack_frames += 1
+        elif frame_type == FrameType.BEACON:
+            self.rx_beacon_frames += 1
+
+    def record_tx_success(self):
+        """Record a frame successfully completed (ACK received)."""
+        self.tx_successes += 1
+
+    def record_tx_failure(self, retries: int):
+        """Record a frame dropped after reaching max retries."""
+        self.tx_failures += 1
+        self.total_retries += retries
+
+    def update_queue_drops(self, queue: MACQueue):
+        """Update the queue drop count from the MACQueue."""
+        self.mac_queue_drops = queue.get_drop_count()
+
+    def get_summary(self) -> Dict:
+        """Generate a summary of all metrics."""
+        duration = time.time() - self.start_time
+        
+        # Calculate derived metrics
+        data_tx_rate = self.tx_data_frames / duration if duration > 0 else 0
+        total_tx_frames = self.tx_data_frames + self.tx_ack_frames + self.tx_beacon_frames
+        total_rx_frames = self.rx_data_frames + self.rx_ack_frames + self.rx_beacon_frames
+        tx_efficiency = (self.tx_successes / self.tx_attempts) * 100 if self.tx_attempts > 0 else 0
+
+        return {
+            "node_id": self.node_id,
+            "runtime_sec": round(duration, 2),
+            "--- Total Frames ---": "",
+            "total_tx_frames": total_tx_frames,
+            "total_rx_frames": total_rx_frames,
+            "data_tx_frames": self.tx_data_frames,
+            "data_rx_frames": self.rx_data_frames,
+            "--- Queue/CSMA Metrics ---": "",
+            "tx_attempts": self.tx_attempts,
+            "tx_successes": self.tx_successes,
+            "tx_failures_max_retry": self.tx_failures,
+            "total_retries": self.total_retries,
+            "csma_deferrals": self.csma_deferrals,
+            "mac_queue_drops": self.mac_queue_drops,
+            "--- Derived Performance ---": "",
+            "data_tx_rate_per_sec": round(data_tx_rate, 2),
+            "tx_efficiency_percent": round(tx_efficiency, 2)
+        }
+    
