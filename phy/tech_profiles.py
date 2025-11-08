@@ -1,3 +1,5 @@
+from .prob_channel import ProbChannel
+
 class WifiProfile:
     def __init__(
         self,
@@ -12,6 +14,8 @@ class WifiProfile:
         spatial_streams,
         guard_intervals,
         max_packet_size,
+        channel_class=None,
+        channel_params=None,
     ):
         self.name = name
         self.mcs_table = mcs_table
@@ -25,6 +29,10 @@ class WifiProfile:
         self.guard_intervals = guard_intervals
         self.max_packet_size = max_packet_size
 
+        # now included prob_channels
+        self.channel_class = channel_class
+        self.channel_params = channel_params
+
 
 wifi_11n = WifiProfile(
     name="802.11n",
@@ -37,7 +45,9 @@ wifi_11n = WifiProfile(
     frequency_bands=["2.4GHz", "5GHz"],
     spatial_streams=2,
     guard_intervals=[400, 800],               # ns
-    max_packet_size=7935                      # bytes
+    max_packet_size=7935,                      # bytes
+    channel_class = ProbChannel,
+    channel_params = {"loss_prob": 0.15}
 )
 
 wifi_11ac = WifiProfile(
@@ -52,7 +62,9 @@ wifi_11ac = WifiProfile(
     frequency_bands=["5GHz"],               # 11ac is primarily 5 GHz
     spatial_streams=4,                      # typical upper common config; spec allows up to 8
     guard_intervals=[400, 800],             # ns (Short/Long GI)
-    max_packet_size=11454                   # bytes (typical max A-MSDU/MPDU size for 11ac)
+    max_packet_size=11454,                   # bytes (typical max A-MSDU/MPDU size for 11ac)
+    channel_class = ProbChannel,
+    channel_params = {"loss_prob": 0.15}
 )
 
 wifi_direct = WifiProfile(
@@ -67,6 +79,8 @@ wifi_direct = WifiProfile(
     frequency_bands=["2.4GHz", "5GHz"],     # depends on device capability
     spatial_streams=2,                      # many P2P devices use 1–2 streams
     guard_intervals=[400, 800],             # ns
-    max_packet_size=7935                    # bytes (11n-style A-MSDU limit common in P2P)
+    max_packet_size=7935,                    # bytes (11n-style A-MSDU limit common in P2P)
+    channel_class = ProbChannel,
+    channel_params = {"loss_prob": 0.15}
 )
 
