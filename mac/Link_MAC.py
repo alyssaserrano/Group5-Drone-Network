@@ -1,11 +1,3 @@
-"""What must be implemented
- - Queue management
- - Neighbor table
- - CSMA/CA flow (sense -> backoff -> transmit)
- - ACK/retry
- - Beacons handling
- - Metrics
- """
 import random
 import time
 from collections import deque
@@ -203,7 +195,7 @@ class NeighborTable:
 
         return len(expired_neighbors)
 
-    def get_signal_strenght_to_cnd(self) -> float:
+    def get_signal_strength_to_cnd(self) -> float:
         """
         Get signal strength to C&C drone. Used by worker drones to decide if
         they need to move closer to the C&C before transmitting data.
@@ -220,56 +212,29 @@ class NeighborTable:
 
 
 # ---------------------------------------------------------------------------------------------------------------------
-# SHARED CHANNEL SIMULATION (MOCK)
-# ---------------------------------------------------------------------------------------------------------------------
-class SharedChannel:
-    """
-    MOCK: A simple representation of a shared communication channel.
-    Required for CMSACA to function as designed.
-    """
-    def __init__(self):
-        self._is_busy = False
-
-    def is_busy(self) -> bool:
-        """Simulate carrier sense."""
-        return self._is_busy
-
-    def transmit(self, frame: MACFrame):
-        """Simulate transmitting a frame."""
-        # In a real simulation, this would send the frame to a list of receivers
-        # For this implementation, we just mark the channel as busy for a moment
-        self._is_busy = True
-        # In a real scenario, the time to transmit would be based on frame size
-        # time.sleep(0.005) 
-        self._is_busy = False
-        print(f"[CHANNEL] Transmitting {frame.frame_type.name} from {frame.source} to {frame.dest or 'Broadcast'} (Seq:{frame.seq_num}, Retries:{frame.retry_count})")
-
-
-# ---------------------------------------------------------------------------------------------------------------------
 # CSMA/CA
 # ---------------------------------------------------------------------------------------------------------------------
-class CMSACA:
+class CSMACA:
     """
-    Implements the Carrier Sense Multiple Access with Collision Avoidance CMSA/CA protocol.
+    Implements the Carrier Sense Multiple Access with Collision Avoidance CSMA/CA protocol.
     """
-    # -----------------------------------------------------------
-    # Is the communication channel being implemented by another layer?????
-    # -----------------------------------------------------------
-    def __init__(self, channel: SharedChannel, min_backoff: float = 0.01, max_backoff: float = 0.1):
+    def __init__(self, channel, my_drone, min_backoff: float = 0.01, max_backoff: float = 0.1):
         """
         Initialize CSMA/CA controller
 
         Args:
-            channel: Shared channel to transmit data on
+            channel:ProbChannel object from prob_channel.py
+            my_drone: Reference to drone object
             min_backoff: Minimum backoff time in seconds.
             max_backoff: Maximum backoff time in seconds.
         """
         self.channel = channel
+        self.my_drone = my_drone
         self.min_backoff = min_backoff
         self.max_backoff = max_backoff
         self.current_backoff = min_backoff                  # Starts at minimum
 
-    def transmit_with_csma(self, frame: MACFrame):
+    def transmit_with_csma(self, frame: MACFrame) -> bool:
         """
         Attempt to transmit a frame using CSMA/CA
 
@@ -281,7 +246,7 @@ class CMSACA:
             False - if the transmission was deferred (busy channel)
         """
         # Initial carrier sense - check if channel is busy
-        if self.channel.is_busy():
+        if self._is_channel_busy():
             # Channel is busy, defer transmission and try again later
             return False
 
@@ -293,15 +258,30 @@ class CMSACA:
         time.sleep(backoff_time)
 
         # Final carrier sense, double-check the channel is available
-        if self.channel.is_busy():
+        if self._is_channel_busy():
             # Channel became busy during backoff, delay transmission
             return False
 
         # Channel is available, safe to transmit
-        self.channel.transmit(frame)
+        if frame.dest is None:
+            # Broadcast to beacons
+            self.channel.broadcast_put(frame)
+
+        else:
+            # Unicast (data, ACK)
+            self.channel.unicast_put(frame, frame.dest)
 
         # Return success
         return True
+
+    def _is_channel_busy(self) -> bool:
+        """
+        Check if channel is busy (carrier sensing)
+        """
+        # Simplified carrier sense for simulation
+        # For now always return true (channel is available)
+        # Random backoff provides collision avoidance.
+        return False
 
     def increase_backoff(self):
         """
@@ -327,18 +307,22 @@ class AckRetry:
     """
     Handles the ACKs and retransmissions.
     """
-    def __init__(self, mac_queue: MACQueue, csma_controller: CMSACA, max_retries: int = 3, ack_timeout: float = 0.05):
+    def __init__(self, mac_queue: MACQueue, csma_controller: CSMACA, channel, my_drone, max_retries: int = 3, ack_timeout: float = 0.05):
         """
         Initializes ACK/Retry handler.
 
         Args:
             mac_queue: The queue to put frames back into for retransmission.
             csma_controller: The CSMA/CA controller for backoff management.
+            channel: PropChannel from prob_channel.py.
+            my_drone: Reference to drone object.
             max_retries: Maximum number of times to retry a frame.
             ack_timeout: Time to wait for an ACK before considering it a failure.
         """
         self.mac_queue = mac_queue
         self.csma_controller = csma_controller
+        self.channel = channel
+        self.my_drone = my_drone
         self.max_retries = max_retries
         self.ack_timeout = ack_timeout
         # Stores frames waiting for an ACK: { (dest, seq_num): MACFrame }
@@ -434,7 +418,7 @@ class BeaconManager:
     """
     Send periodic broadcast beacons to announce presence to ground stations and other drones in the network.
     """
-    def __init__(self, node_id: str, role: DroneRole, beacon_interval: float = 1.0, 
+    def __init__(self, node_id: str, role: DroneRole, channel, beacon_interval: float = 1.0,
                  get_position_func: Callable[[], Optional[Tuple[float, float, float]]] = lambda: None):
         """
         Initialize Beacon Manager.
@@ -442,15 +426,25 @@ class BeaconManager:
         Args:
             node_id: Unique identifier of the drone.
             role: The role of the drone (C&C or WORKER).
+            channel: PropChannel from prob_channel.py.
             beacon_interval: Time in seconds between beacon transmissions.
             get_position_func: A function to call to get the drone's current position.
         """
         self.node_id = node_id
         self.role = role
+        self.channel = channel
         self.beacon_interval = beacon_interval
         self.last_beacon_time = 0.0
         self.seq_num_counter = 0
         self.get_position = get_position_func
+
+    def send_beacon(self):
+        """
+        Send beacon using ProbChannel.broadcast_put().
+        """
+        beacon_frame = self.create_beacon_frame()
+        # Broadcast using channel.py
+        self.channel.broadcast_put(beacon_frame)
 
     def needs_to_send_beacon(self) -> bool:
         """Check if it's time to send a new beacon."""
@@ -501,7 +495,225 @@ class BeaconManager:
             return role, position
         except Exception as e:
             # print(f"Error parsing beacon payload: {e}")
+            return
+
+# ---------------------------------------------------------------------------------------------------------------------
+# MAIN MAC LAYER - INTEGRATES WITH CHANNEL.PY
+# ---------------------------------------------------------------------------------------------------------------------
+class MACLayer:
+    """
+    Main MAC Layer that integrates with prob_channel.py
+    Primary interface for the drone to use the MAC layer services.
+    """
+    def __init__(self, my_drone, role: DroneRole, cnd_id: Optional[str] = None, queue_capacity: int = 50):
+        """
+        Initialize MAC Layer for the drone.
+
+        Args:
+            my_drone: The drone object.
+            role: COMMAND_CONTROL or WORKER_DRONE.
+            cnd_id: C&C drone ID.
+            queue capacity: Maximum queue size.
+        """
+        # Store references
+        self.my_drone = my_drone
+        self.node_id = my_drone.identifier
+        self.role = role
+        self.cnd_id = cnd_id
+
+        # Get channel simulator
+        self.channel = my_drone.simulator.channel
+        self.env = my_drone.env
+
+        # Initialize MAC queue
+        self.queue = MACQueue(max_capacity=queue_capacity)
+
+        # Initialize CSMA/CA with ProbChannel
+        self.csma = CSMACA(
+            channel=self.channel,
+            my_drone=my_drone,
+            min_backoff=0.01,
+            max_backoff=0.1
+        )
+
+        # Initialize ACK/Retry with ProbChannel
+        self.ack_retry = AckRetry(
+            mac_queue=self.queue,
+            csma_controller=self.csma,
+            channel=self.channel,
+            my_drone=my_drone,
+            max_retries=3,
+            ack_timeout=0.05
+        )
+
+        # Initialize Beacon Manager with ProbChannel
+        self.beacon_manager = BeaconManager(
+            node_id=self.node_id,
+            role=self.role,
+            channel=self.channel,
+            beacon_interval=1.0,
+            get_position_func=lambda: getattr(my_drone, 'coords', None)
+        )
+
+        # Initialize Neighbor Table
+        self.neighbor_table = NeighborTable(expiry_timeout=10.0)
+
+        # Initialize Metrics
+        self.metrics = Metrics(node_id=self.node_id)
+
+        # State
+        self.sequence_num = 0
+        self.received_data_frames = deque()
+
+        # Validation
+        if role == DroneRole.WORKER_DRONE and cnd_id is None:
+            raise ValueError("Worker drones must specified cnd_id")
+
+    def send(self, payload: bytes) -> bool:
+        """
+        Send data (called by Network Layer or GUI).
+    
+        This is the MAC layer's SERVICE INTERFACE for upper layers.
+        Network Layer (or GUI for testing) calls this to transmit data.
+    
+        Args:
+            payload: Data bytes to send (comes from Network Layer)
+                - For workers: Network Layer provides routing info + data
+                - For C&C: Network Layer provides aggregated data
+            
+        Returns:
+            True if queued successfully, False if queue full
+        """
+        # Determine destination depending on role
+        if self.role == DroneRole.WORKER_DRONE:
+            dest = self.cnd_id      # Worker sends to C&C
+        else:
+            dest = None     # C&C broadcast
+
+        # Create Data frame
+        frame = MACFrame(
+            frame_type=FrameType.DATA,
+            source=self.node_id,
+            dest=dest,
+            seq_num=self.sequence_num,
+            payload=payload
+        )
+        self.sequence_num += 1
+
+        # Enqueue
+        success = self.queue.enqueue(frame)
+        if not success:
+            self.metrics.mac_queue_drops += 1
+
+        return success
+
+    def receive(self) -> Optional[Tuple[str, bytes]]:
+        """
+        Receive data (called by Network Layer or GUI).
+
+        This is the MAC layer's SERVICE INTERFACE for upper layers.
+        Network Layer (or GUI for testing) calls this to retrieve received data.
+
+        Returns:
+            (source_id, payload) tuple if data available, None otherwise
+                - source_id: Which drone sent this
+                - payload: The data bytes (Network Layer will parse this)
+        """
+        if len(self.received_data_frames) == 0:
             return None
+
+        frame = self.received_data_frames.popleft()
+        return frame.source, frame.payload
+
+    def process_outgoing(self):
+        """
+        Process outgoing queue, transmit waiting frames
+
+        Call this repeatedly in main even loop to send queue frames
+        """
+
+        # Check for ACK timeouts and handle retries
+        if not self.queue.is_empty():
+            frame = self.queue.dequeue()
+            if frame:
+                self.metrics.record_tx_attempt()
+
+                # Try CSMA/CA transmission
+                # This calls ProbChannel.unicast_put() or ProbChannel.broadcast_put()
+                success = self.csma.transmit_with_csma(frame)
+
+                if success:
+                    self.metrics.record_transmission(frame.frame_type)
+
+                    # If DATA frame to specific dest, register for ACK
+                    if frame.frame_type == FrameType.DATA and frame.dest:
+                        self.ack_retry.register_sent_frame(frame)
+                else:
+                    # Channel is busy, retry
+                    self.queue.enqueue(frame)
+                    self.metrics.record_csma_deferral()
+
+    def send_beacon_if_needed(self):
+        """
+        Sends beacon if it's time.
+        Call this periodically in main.
+        """
+        if self.beacon_manager.needs_to_send_beacon():
+            self.beacon_manager.send_beacon()
+            self.metrics.record_transmission(FrameType.BEACON)
+
+    def cleanup_neighbors(self):
+        """
+        Remove expired neighbors from table
+        Call this periodically (every 5-10 seconds)
+
+        Returns:
+            Number of neighbors removed
+        """
+        return self.neighbor_table.remove_expired()
+
+    def get_metrics(self) -> Dict:
+        """
+        Get performance metrics
+
+        Returns:
+            Dictionary with MAC Layer performance stats
+        """
+        self.metrics.update_queue_drops(self.queue)
+        return self.metrics.get_summary()
+
+    def get_neighbors(self) -> List[Neighbor]:
+        """
+        Get list of active neighbors
+
+        Returns:
+            List of Neighbor objects that have not expired
+        """
+        return self.neighbor_table.get_active()
+
+    def should_move_closer_to_cnd(self) -> bool:
+        """
+        Check if worker drone should move closer to C&C for better signal
+
+        Only applies to WORKER_DRONE role.
+
+        Returns:
+            True if it should move closer, False otherwise
+        """
+
+        if self.role != DroneRole.WORKER_DRONE:
+            return False
+
+        # Get signal strength to C&C
+        signal = self.neighbor_table.get_signal_strength_to_cnd()
+
+        # If weak signal and have data to send, move closer
+        WEAK_SIGNAL_THRESHOLD = 0.3
+
+        if signal < WEAK_SIGNAL_THRESHOLD and not self.queue.is_empty():
+            return True
+
+        return False
 
 # ---------------------------------------------------------------------------------------------------------------------
 # METRICS TRACKER
