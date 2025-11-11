@@ -1,6 +1,8 @@
 import logging
 from utils import config
 from .tech_profiles import wifi_11n  # Import tech_profiles.py file that has our wifi objects.
+from .tech_profiles import wifi_11ac
+from .tech_profiles import wifi_direct
 
 # config logging
 logging.basicConfig(filename='running_log.log',
@@ -31,7 +33,7 @@ class Phy:
         self.profile = wifi_11n  # Our tech_profile object instantiation. 
 
         # Debug for knowing if it is using our tech_profile.
-        print(f"[PHY INIT] drone {getattr(self.my_drone, 'identifier', '?')} assigned profile: {self.profile.name}, TX_mW={self.profile.energy_model.get('TX', 'N/A')}")
+        #print(f"[PHY INIT] drone {getattr(self.my_drone, 'identifier', '?')} assigned profile: {self.profile.name}, TX_mW={self.profile.energy_model.get('TX', 'N/A')}")
 
     def unicast(self, packet, next_hop_id):
         """
@@ -43,7 +45,7 @@ class Phy:
         """
 
         # Debug
-        print(f"[PHY TX] drone {self.my_drone.identifier} unicast using profile '{self.profile.name}' | profile_TX_mW={self.profile.energy_model.get('TX','N/A')} | config_TX={config.TRANSMITTING_POWER}")
+        #print(f"[PHY TX] drone {self.my_drone.identifier} unicast using profile '{self.profile.name}' | profile_TX_mW={self.profile.energy_model.get('TX','N/A')} | config_TX={config.TRANSMITTING_POWER}")
 
         # energy consumption
         energy_consumption = (packet.packet_length / config.BIT_RATE) * config.TRANSMITTING_POWER
@@ -63,7 +65,7 @@ class Phy:
         """
 
         # Debug
-        print(f"[PHY TX] drone {self.my_drone.identifier} broadcast using profile '{self.profile.name}' | profile_TX_mW={self.profile.energy_model.get('TX','N/A')} | config_TX={config.TRANSMITTING_POWER}")
+        #print(f"[PHY TX] drone {self.my_drone.identifier} broadcast using profile '{self.profile.name}' | profile_TX_mW={self.profile.energy_model.get('TX','N/A')} | config_TX={config.TRANSMITTING_POWER}")
 
         # energy consumption
         energy_consumption = (packet.packet_length / config.BIT_RATE) * config.TRANSMITTING_POWER
@@ -84,7 +86,7 @@ class Phy:
         """
 
         # Debug
-        print(f"[PHY TX] drone {self.my_drone.identifier} multicast using profile '{self.profile.name}' | profile_TX_mW={self.profile.energy_model.get('TX','N/A')} | config_TX={config.TRANSMITTING_POWER}")
+        #print(f"[PHY TX] drone {self.my_drone.identifier} multicast using profile '{self.profile.name}' | profile_TX_mW={self.profile.energy_model.get('TX','N/A')} | config_TX={config.TRANSMITTING_POWER}")
 
         # a transmission delay should be considered
         yield self.env.timeout(packet.packet_length / config.BIT_RATE * 1e6)
