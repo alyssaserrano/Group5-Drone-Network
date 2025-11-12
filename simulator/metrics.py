@@ -78,7 +78,9 @@ class Metrics:
 
         # calculate the routing load
         # rl = self.control_packet_num / len(self.datapacket_arrived)
-        ##################################################
+        
+        ######################Edited by network group############################
+        # handle the case when no data packets arrive at destination
         if len(self.datapacket_arrived) == 0:
             logger.warning("No data packets reached their destination — cannot compute performance metrics.")
             rl = 0
