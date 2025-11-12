@@ -87,7 +87,7 @@ class Metrics:
         else:
             rl = self.control_packet_num / len(self.datapacket_arrived)
 
-        ############################################################
+        ##########################################################################
 
         # channel access delay
         average_mac_delay = np.mean(self.mac_delay)
