@@ -26,8 +26,8 @@ if __name__ == "__main__":
 
     # ====== Physical Layer Setup ================
     # Profile options: wifi_11n, wifi_11ac, wifi_direct
-    selected_profile = wifi_direct
-    sim.channel = create_channel(env, wifi_11ac)
+    selected_profile = wifi_11ac
+    sim.channel = create_channel(env, selected_profile)
     print(f"Using channel: {type(sim.channel).__name__} with loss_prob={getattr(sim.channel, 'loss_prob', None)}")
     print(f"Using tech profile: {selected_profile.name}")
 

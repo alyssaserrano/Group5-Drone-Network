@@ -17,7 +17,7 @@ class ProbChannel(Channel):
         returns True if random produces a number less than 0.15, False otherwise
         """
         result = random.random() < self.loss_prob
-        #print(f"[DEBUG] drop_packet: loss_prob={self.loss_prob}, will_drop={result}")
+        print(f"[DEBUG] drop_packet: loss_prob={self.loss_prob}, will_drop={result}")
         return result
     
     #Override unicast to add preset packet loss feature
@@ -39,8 +39,8 @@ class ProbChannel(Channel):
         same here just loops through all drones (broadcast)
         
         """
-        #print(f"[DEBUG] ProbChannel.broadcast_put called")
-        #print(f"[DEBUG] pipes keys: {list(self.pipes.keys())}")
+        print(f"[DEBUG] ProbChannel.broadcast_put called")
+        print(f"[DEBUG] pipes keys: {list(self.pipes.keys())}")
         for key in self.pipes.keys():
             if self.drop_packet():
                 print(f"[CHANNEL] Broadcast packet to drone {key} LOST (p={self.loss_prob})")
