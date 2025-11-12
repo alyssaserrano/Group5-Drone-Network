@@ -77,17 +77,13 @@ class Metrics:
         hop_cnt = np.mean(list(self.hop_cnt_dict.values()))
 
         # calculate the routing load
-        #rl = self.control_packet_num / len(self.datapacket_arrived)
+        # rl = self.control_packet_num / len(self.datapacket_arrived)
         ##################################################
         if len(self.datapacket_arrived) == 0:
             logger.warning("No data packets reached their destination — cannot compute performance metrics.")
             rl = 0
-            avg_delay = 0
-            pdr = 0
         else:
             rl = self.control_packet_num / len(self.datapacket_arrived)
-            avg_delay = np.mean(self.e2e_delay)
-            pdr = len(self.datapacket_arrived) / self.datapacket_sent
 
         ############################################################
 

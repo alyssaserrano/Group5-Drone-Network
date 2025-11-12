@@ -104,9 +104,11 @@ class Drone:
         self.enable_blocking = 1  # enable "stop-and-wait" protocol
 
         #######################################################
-        #self.routing_protocol = Dsdv(self.simulator, self)
-        from routing.olsr.olsr import Olsr
-        self.routing_protocol = Olsr(self.simulator, self)
+        # self.routing_protocol = Dsdv(self.simulator, self)
+        # from routing.olsr.olsr import Olsr
+        # self.routing_protocol = Olsr(self.simulator, self)
+        from routing.aodv.aodv import Aodv
+        self.routing_protocol = Aodv(self.simulator, self)
         ########################################################
 
         self.mobility_model = GaussMarkov3D(self)
