@@ -9,3 +9,4 @@ __pycache__
 *.gif
 .vscode/
 venv/
+.vscode//UAV_venv/
