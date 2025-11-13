@@ -5,7 +5,6 @@ import math
 import queue
 from simulator.log import logger
 from entities.packet import DataPacket
-from routing.dsdv.dsdv import Dsdv
 from mac.csma_ca import CsmaCa
 from mobility.gauss_markov_3d import GaussMarkov3D
 from energy.energy_model import EnergyModel
