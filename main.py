@@ -1,3 +1,4 @@
+
 import simpy
 from utils import config
 from simulator.simulator import Simulator
@@ -25,6 +26,10 @@ if __name__ == "__main__":
 
     # Run simulation
     env.run(until=config.SIM_TIME)
+    
+    print("Simulation finished — showing figures...")
+    import matplotlib.pyplot as plt
+    plt.show()
     
     # Finalize visualization
     visualizer.finalize()

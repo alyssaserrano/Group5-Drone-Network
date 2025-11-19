@@ -74,9 +74,15 @@ class SimulationVisualizer:
         self._setup_communication_tracking()
         
         # Reference for interactive elements
-        self.interactive_fig = None
-        self.interactive_slider = None
-        self.frame_times = []
+        ####self.interactive_fig = None
+        ####self.interactive_slider = None
+        #####self.frame_times = []
+        
+        ##################
+        self.is_playing = False
+        self.current_frame_index = 0
+        self._animation_timer = None
+        ##################
     
     def _setup_communication_tracking(self):
         """Setup tracking for communication events"""
@@ -345,7 +351,7 @@ class SimulationVisualizer:
         
         # Create figure with fixed subplots - this is key to solving the error
         fig = plt.figure(figsize=(15, 7))
-        plt.subplots_adjust(bottom=0.15)  # Make room for controls
+        plt.subplots_adjust(bottom=0.23)  # Make room for controls
         
         # Create the subplots once and keep them
         gs = fig.add_gridspec(1, 2, hspace=0, wspace=0.2)
@@ -367,6 +373,14 @@ class SimulationVisualizer:
         
         button_ax = plt.axes([0.45, 0.01, 0.1, 0.03])
         goto_button = Button(button_ax, 'Go')
+        
+        #Start and Pause Buttons
+        ############
+        play_ax = plt.axes([0.60, 0.01, 0.08, 0.03])
+        pause_ax = plt.axes([0.71, 0.01, 0.08, 0.03])
+        play_button = Button(play_ax, 'Start')
+        pause_button = Button(pause_ax, 'Pause')
+        ############
         
         def update_plot(current_time):
             # Clear existing content on axes
@@ -449,12 +463,43 @@ class SimulationVisualizer:
             except Exception as e:
                 print(f"Error going to time: {e}")
         
+        #Playback logic (Start/Pause)
+        ######################
+        self.current_frame_index = 0
+        
+        def advance_frame():
+            if not self.is_playing:
+                return
+            
+            # Move to next frame
+            self.current_frame_index = (self.current_frame_index + 1) % len(frame_times_us)
+            next_time_us = frame_times_us[self.current_frame_index]
+            # This triggers update() via slider callback
+            time_slider.set_val(next_time_us)
+        
+        # Timer: how fast the animation plays (ms)
+        self._animation_timer = fig.canvas.new_timer(interval=200)
+        self._animation_timer.add_callback(advance_frame)
+        self._animation_timer.start()
+        
+        def on_play(event):
+            self.is_playing = True
+            
+        def on_pause(event):
+            self.is_playing = False
+        
+        ######################
+        
         # Connect the update function to the slider
         time_slider.on_changed(update)
         
         # Connect the goto function to the button
         goto_button.on_clicked(goto_time)
         
+        #####################
+        play_button.on_clicked(on_play)
+        pause_button.on_clicked(on_pause)
+        #####################
         # Initial plot
         update_plot(self.frame_times[0])
         

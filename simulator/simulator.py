@@ -48,6 +48,7 @@ class Simulator:
 
         self.metrics = Metrics(self)  # use to record the network performance
 
+        
         # NOTE: if distributed optimization is adopted, remember to comment this to speed up simulation
         # self.central_controller = CentralController(self)
 
@@ -73,7 +74,6 @@ class Simulator:
             self.drones.append(drone)
 
         # scatter_plot_with_spherical_obstacles(self)
-        scatter_plot(self)
 
         self.env.process(self.show_performance())
         self.env.process(self.show_time())
@@ -89,5 +89,7 @@ class Simulator:
         yield self.env.timeout(self.total_simulation_time - 1)
 
         scatter_plot(self)
+        
+        
 
         self.metrics.print_metrics()
