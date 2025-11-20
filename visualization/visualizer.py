@@ -10,6 +10,10 @@ from utils import config
 import io
 import matplotlib.patheffects as path_effects
 
+######
+import csv
+#####
+
 # Add 3D arrow class definition that handles arrows in 3D view
 class Arrow3D(FancyArrowPatch):
     """
@@ -73,16 +77,29 @@ class SimulationVisualizer:
         # Setup communication tracking
         self._setup_communication_tracking()
         
+        
+        ####################################
         # Reference for interactive elements
-        ####self.interactive_fig = None
-        ####self.interactive_slider = None
-        #####self.frame_times = []
+        self.interactive_fig = None
+        self.interactive_slider = None
+        self.frame_times = []
+        ####################################
         
         ##################
         self.is_playing = False
         self.current_frame_index = 0
         self._animation_timer = None
         ##################
+        
+        #Metrics time-series for panels
+        #####################################
+        self.metric_times = []      # seconds
+        self.pdr_series = []        # packet delivery ratio
+        self.latency_series = []    # average latency
+        self.jitter_series = []     # latency jitter
+        self.queue_series = []      # e.g., average queue length
+        self.energy_series = []     # e.g., average remaining energy
+        #####################################
     
     def _setup_communication_tracking(self):
         """Setup tracking for communication events"""
@@ -114,6 +131,42 @@ class SimulationVisualizer:
         
         # Replace the method
         self.simulator.channel.unicast_put = tracked_unicast_put
+    
+    ##########################################
+    def track_metrics(self):
+        """
+        Periodically record performance metrics (PDR, latency, jitter,
+        queue sizes, energy) as time series.
+        NOTE: You need to fill in how to get these from your simulator.
+        """
+        current_time = self.simulator.env.now / 1e6  # seconds
+        self.metric_times.append(current_time)
+
+        # ---- TODO: replace these placeholders with real values ----
+        # The idea: ask your simulator for these stats at "now".
+        # For example, if your simulator has something like:
+        #   self.simulator.stats.pdr(),
+        #   self.simulator.stats.avg_latency(), etc.
+        #
+        # For now I'll show dummy calls you can replace.
+
+        # Packet Delivery Ratio (0–1)
+        pdr = getattr(self.simulator, "get_pdr", lambda: 0.0)()
+        # Average latency (ms)
+        avg_latency = getattr(self.simulator, "get_avg_latency", lambda: 0.0)()
+        # Jitter (ms)
+        jitter = getattr(self.simulator, "get_jitter", lambda: 0.0)()
+        # Average queue length
+        avg_queue = getattr(self.simulator, "get_avg_queue_size", lambda: 0.0)()
+        # Average remaining energy (or total used)
+        avg_energy = getattr(self.simulator, "get_avg_energy", lambda: 0.0)()
+
+        self.pdr_series.append(pdr)
+        self.latency_series.append(avg_latency)
+        self.jitter_series.append(jitter)
+        self.queue_series.append(avg_queue)
+        self.energy_series.append(avg_energy)
+    ##########################################
     
     def track_drone_positions(self):
         """
@@ -297,6 +350,72 @@ class SimulationVisualizer:
             print(f"Error creating animation: {e}")
             print("Continuing with interactive visualization...")
     
+    ###################################
+    def create_metrics_panels(self):
+        """Create time-series panels for PDR/latency/jitter/queue/energy and export PNG + CSV."""
+        if not self.metric_times:
+            print("No metric data recorded; skipping metrics panels.")
+            return
+
+        print("Creating metrics panels...")
+
+        times = np.array(self.metric_times)
+
+        fig, axes = plt.subplots(5, 1, figsize=(10, 12), sharex=True)
+        fig.suptitle("UAV Network Performance Metrics", fontsize=14)
+
+        # 1) PDR
+        axes[0].plot(times, self.pdr_series)
+        axes[0].set_ylabel("PDR")
+        axes[0].set_ylim(0, 1.05)
+
+        # 2) Latency
+        axes[1].plot(times, self.latency_series)
+        axes[1].set_ylabel("Latency (ms)")
+
+        # 3) Jitter
+        axes[2].plot(times, self.jitter_series)
+        axes[2].set_ylabel("Jitter (ms)")
+
+        # 4) Queue size
+        axes[3].plot(times, self.queue_series)
+        axes[3].set_ylabel("Queue size")
+
+        # 5) Energy
+        axes[4].plot(times, self.energy_series)
+        axes[4].set_ylabel("Energy")
+        axes[4].set_xlabel("Time (s)")
+
+        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+        #Export PNG
+        png_path = os.path.join(self.output_dir, "metrics_panels.png")
+        fig.savefig(png_path, dpi=150)
+        print(f"Metrics panels PNG saved to {png_path}")
+
+        #Export CSV
+        csv_path = os.path.join(self.output_dir, "metrics_timeseries.csv")
+        with open(csv_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                "time_s", "pdr", "avg_latency_ms", "jitter_ms",
+                "avg_queue_size", "avg_energy"
+            ])
+            for i in range(len(times)):
+                writer.writerow([
+                    times[i],
+                    self.pdr_series[i],
+                    self.latency_series[i],
+                    self.jitter_series[i],
+                    self.queue_series[i],
+                    self.energy_series[i],
+                ])
+        print(f"Metrics CSV saved to {csv_path}")
+
+        # Show the figure (optional)
+        plt.show()
+    ###################################
+    
     def run_visualization(self):
         """
         Run visualization process
@@ -308,6 +427,9 @@ class SimulationVisualizer:
         def track_positions():
             while True:
                 self.track_drone_positions()
+                ################### Record metrics at the same interval
+                self.track_metrics()
+                ###################
                 yield self.simulator.env.timeout(tracking_interval_us)
         
         # Register tracking process
@@ -324,6 +446,11 @@ class SimulationVisualizer:
         
         # Create interactive visualization
         self.create_interactive_visualization()
+        
+        # Create metrics dashboard panels + export PNG/CSV
+        ###################################
+        self.create_metrics_panels()
+        ###################################
         
         print("Visualization complete. Output saved to:", self.output_dir)
 
@@ -496,10 +623,11 @@ class SimulationVisualizer:
         # Connect the goto function to the button
         goto_button.on_clicked(goto_time)
         
-        #####################
+        ##################### Buttons
         play_button.on_clicked(on_play)
         pause_button.on_clicked(on_pause)
-        #####################
+        ##################### Buttons
+        
         # Initial plot
         update_plot(self.frame_times[0])
         
