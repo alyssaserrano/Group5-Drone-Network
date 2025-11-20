@@ -143,7 +143,7 @@ class Aodv:
                 rep_hops = entry.get('hops', 0)
                 config.GL_ID_HELLO_PACKET += 1
                 channel_id = self.my_drone.channel_assigner.channel_assign()
-                rrep = RREPPacket(rep_src=packet.dst,
+                rrep = RREPPacket(rep_src=self.my_drone.identifier,
                                    origin=packet.origin,
                                    rep_dst_seq=rep_dst_seq,
                                    rep_hops=rep_hops,
@@ -154,17 +154,17 @@ class Aodv:
                                    channel_id=channel_id)
                 # reply unicast back to the neighbor who sent this RREQ
                 rrep.next_hop_id = src_drone_id
-                rrep.transmission_mode = 0
+                rrep.transmission_mode = 0 # not needed, but for clarity
                 self.my_drone.transmitting_queue.put(rrep)
                 self.simulator.metrics.control_packet_num += 1
                 return
 
-            # otherwise, rebroadcast RREQ to neighbors (exclude the src)
-            new_hop = packet.hop_count + 1
-            new_path = list(packet.path) + [self.my_drone.identifier]
-            for n in list(self.my_drone.channel_assigner.simulator.drones):
-                # do nothing here: actual broadcasting is done by Drone/MAC when packet is queued
-                pass
+            # otherwise, rebroadcast RREQ to neighbors 
+            packet.hop_count += 1
+            packet.path.append(self.my_drone.identifier)
+            self.my_drone.transmitting_queue.put(packet)
+            # the origin should buffer the data; Drone.feed_packet will append to waiting_list
+            self.simulator.metrics.control_packet_num += 1
 
         # RREP
         elif isinstance(packet, RREPPacket):
@@ -181,7 +181,7 @@ class Aodv:
             if self.my_drone.identifier == packet.origin:
                 # move any waiting packets for rep_src into transmitting_queue
                 for m in list(self.my_drone.waiting_list):
-                    if m.dst_drone.identifier == packet.rep_src:
+                    if m.dst_drone.identifier == packet.rep_src: # if the data is meant for the RREP source
                         try:
                             self.my_drone.transmitting_queue.put(m)
                             self.my_drone.waiting_list.remove(m)
@@ -194,6 +194,7 @@ class Aodv:
                 if rev is not None:
                     next_hop = rev.get('next_hop')
                     # forward RREP toward origin using reverse route (unicast)
+                    packet.rep_hops += 1
                     packet.next_hop_id = next_hop
                     packet.transmission_mode = 0
                     self.my_drone.transmitting_queue.put(packet)
