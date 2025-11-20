@@ -30,7 +30,7 @@ class ProbChannel(Channel):
         """
         #print(f"[DEBUG] ProbChannel.unicast_put called for dst_id={dst_id}")
         if self.drop_packet():
-            print(f"[CHANNEL] Unicast packet to drone {dst_id} LOST (p={self.loss_prob})")
+            #print(f"[CHANNEL] Unicast packet to drone {dst_id} LOST (p={self.loss_prob})")
             return
         super().unicast_put(value, dst_id)
         
@@ -43,7 +43,7 @@ class ProbChannel(Channel):
         #print(f"[DEBUG] pipes keys: {list(self.pipes.keys())}")
         for key in self.pipes.keys():
             if self.drop_packet():
-                print(f"[CHANNEL] Broadcast packet to drone {key} LOST (p={self.loss_prob})")
+                #print(f"[CHANNEL] Broadcast packet to drone {key} LOST (p={self.loss_prob})")
                 continue
             super().unicast_put(value, key)
             
@@ -54,7 +54,7 @@ class ProbChannel(Channel):
         #print(f"[DEBUG] ProbChannel.multicast_put called")
         for dst_id in dst_id_list:
             if self.drop_packet():
-                print(f"[CHANNEL] Multicast packet to drone {dst_id} LOST (p={self.loss_prob})")
+                #print(f"[CHANNEL] Multicast packet to drone {dst_id} LOST (p={self.loss_prob})")
                 continue
             super().unicast_put(value, dst_id)
             
@@ -72,27 +72,27 @@ if __name__ == "__main__":
                      3: [],
                      4: []}  # two fake drones
 
-    print("[TEST] Sending packet...")
+    #print("[TEST] Sending packet...")
     channel.unicast_put(["test_packet", 0, "drone0"], 1)
-    print("[TEST] Channel state:")
-    print("Drone 1 inbox:", channel.pipes[1])
-    print("\n")
+    #print("[TEST] Channel state:")
+    #print("Drone 1 inbox:", channel.pipes[1])
+    #print("\n")
     
-    print("[TEST] Running ProbChannel standalone test for broadcast...")
-    print("[TEST] Sending packet...")
+    #print("[TEST] Running ProbChannel standalone test for broadcast...")
+    #print("[TEST] Sending packet...")
     channel.broadcast_put(["test_packet", 0, "drone0"])
-    print("[TEST] Channel state:")
-    for i in range(5):
-        print(f"Drone {i} inbox:", channel.pipes[i])
-    print("\n")
+    #print("[TEST] Channel state:")
+    #for i in range(5):
+        #print(f"Drone {i} inbox:", channel.pipes[i])
+    #print("\n")
     
-    print("[TEST] Running ProbChannel standalone test for multicast...")
-    print("[TEST] Sending packet...")
+    #print("[TEST] Running ProbChannel standalone test for multicast...")
+    #print("[TEST] Sending packet...")
     channel.multicast_put(["test_packet", 0, "drone0"], [1,3,4])
-    print("[TEST] Channel state:")
-    for i in [1, 3, 4]:
-        print(f"Drone {i} inbox:", channel.pipes[i])
-    print("\n")
+    #print("[TEST] Channel state:")
+    #for i in [1, 3, 4]:
+        #print(f"Drone {i} inbox:", channel.pipes[i])
+    #print("\n")
     
     
     
