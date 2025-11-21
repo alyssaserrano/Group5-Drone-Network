@@ -99,116 +99,8 @@ class MACQueue:
 # ---------------------------------------------------------------------------------------------------------------------
 # NEIGHBOR MANAGEMENT
 # ---------------------------------------------------------------------------------------------------------------------
-class NeighborTable:
-    """
-    C&C drone keeps track of all worker drones.
-    Worker drone only tracks C&C drone.
-    """
-    def __init__(self, expiry_timeout: float = 10.0):
-        """
-        Initialized neighbor table.
-
-        Args:
-            expiry_timeout: Seconds before the neighbor is dropped from the table.
-        """
-        self.neighbor_table = {}
-        self.expiry_timeout = expiry_timeout
-        self.cnd_drone_id = None
-
-    def add_or_update(self, node_id: str, role: DroneRole, signal_strength: float = 1.0,
-                      position: Optional[Tuple[float, float, float]] = None):
-        """
-        Add new neighbor or update existing one.
-
-        Args:
-            node_id: Unique identifier
-            role: C&C or WORKER
-            signal_strength: default 1.0
-            position: Current position of the drone
-        """
-        current_time = time.time()
-
-        # Tracks if it is the C&C drone.
-        if role == DroneRole.COMMAND_CONTROL:
-            self.cnd_drone_id = node_id
-
-        # Check if neighbor already exists in the table
-        if node_id in self.neighbor_table:
-            # Neighbor exist, update it
-            neighbor = self.neighbor_table[node_id]
-            neighbor.last_seen = current_time        # Update timestamp
-            neighbor.signal_strength = signal_strength
-            if position:
-                neighbor.position = position
-        else:
-            # New neighbor, add it
-            self.neighbor_table[node_id] = Neighbor(
-                node_id = node_id,
-                role = role,
-                last_seen = current_time,
-                signal_strength = signal_strength,
-                position = position
-            )
-
-    def get_cnd_drone(self) -> Optional[Neighbor]:
-        """
-        Get the C&C drone information, will be used by workers to find their hub
-        """
-        if self.cnd_drone_id and self.cnd_drone_id in self.neighbor_table:
-            return self.neighbor_table[self.cnd_drone_id]
-        return None
-
-    def get_active(self) -> List[Neighbor]:
-        """
-        Get all neighbors that have not expired.
-
-        Returns:
-            List of Neighbor objects that are still active.
-        """
-        current_time = time.time()
-        active_neighbors = []
-
-        for neighbor in self.neighbor_table.values():
-            time_last_seen = current_time - neighbor.last_seen
-            if time_last_seen < self.expiry_timeout:
-                active_neighbors.append(neighbor)
-
-        return active_neighbors
-
-    def remove_expired(self) -> int:
-        """
-        Remove the expired neighbors from the list.
-
-        Returns:
-            Number of remove neighbors.
-        """
-        current_time = time.time()
-        expired_neighbors = []
-
-        for node_id, neighbor in self.neighbor_table.items():
-            time_last_seen = current_time - neighbor.last_seen
-            if time_last_seen >= self.expiry_timeout:
-                expired_neighbors.append(node_id)
-
-        for node_id in expired_neighbors:
-            del self.neighbor_table[node_id]
-
-        return len(expired_neighbors)
-
-    def get_signal_strength_to_cnd(self) -> float:
-        """
-        Get signal strength to C&C drone. Used by worker drones to decide if
-        they need to move closer to the C&C before transmitting data.
-
-        Returns:
-            Signal strength to C&C (0.0-1.0)
-            0.0 if C&C is not found
-        """
-        cnd = self.get_cnd_drone()              # Get C&C neighbor entry
-
-        # if C&C is found, return its signal strength
-        # Otherwise return 0.0 (no connection)
-        return cnd.signal_strength if cnd else 0.0
+# The NeighborTable class has been entirely removed from Halie's feedback.
+# Neighbor tracking is now handled by the Routing/Topology layers.
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -217,24 +109,27 @@ class NeighborTable:
 class CSMACA:
     """
     Implements the Carrier Sense Multiple Access with Collision Avoidance CSMA/CA protocol.
+    Uses SimPy environment for non-blocking wait times.
     """
-    def __init__(self, channel, my_drone, min_backoff: float = 0.01, max_backoff: float = 0.1):
+    def __init__(self, channel, my_drone, env, min_backoff: float = 0.01, max_backoff: float = 0.1): # <--- CHANGE: Added 'env' to constructor
         """
         Initialize CSMA/CA controller
 
         Args:
             channel:ProbChannel object from prob_channel.py
             my_drone: Reference to drone object
+            env: SimPy Environment for simulated time operations.
             min_backoff: Minimum backoff time in seconds.
             max_backoff: Maximum backoff time in seconds.
         """
         self.channel = channel
         self.my_drone = my_drone
+        self.env = env # <--- Halie's suggestion: Stored env
         self.min_backoff = min_backoff
         self.max_backoff = max_backoff
-        self.current_backoff = min_backoff                  # Starts at minimum
+        self.current_backoff = min_backoff           # Starts at minimum
 
-    def transmit_with_csma(self, frame: MACFrame) -> bool:
+    def transmit_with_csma(self, frame: MACFrame): # <--- CHANGE: Removed -> bool, now returns a generator/process
         """
         Attempt to transmit a frame using CSMA/CA
 
@@ -255,7 +150,8 @@ class CSMACA:
 
         # Wait the backoff time, gives other drones an opportunity to access the channel
         # Spreads out transmissions to avoid collisions
-        time.sleep(backoff_time)
+        # ORIGINAL: time.sleep(backoff_time)
+        yield self.env.timeout(backoff_time) # <--- Halie's suggestion: Use SimPy's simulated time
 
         # Final carrier sense, double-check the channel is available
         if self._is_channel_busy():
@@ -495,7 +391,7 @@ class BeaconManager:
             return role, position
         except Exception as e:
             # print(f"Error parsing beacon payload: {e}")
-            return
+            return None
 
 # ---------------------------------------------------------------------------------------------------------------------
 # MAIN MAC LAYER - INTEGRATES WITH CHANNEL.PY
@@ -504,6 +400,8 @@ class MACLayer:
     """
     Main MAC Layer that integrates with prob_channel.py
     Primary interface for the drone to use the MAC layer services.
+    
+    NOTE: This class's process_outgoing method is now a SimPy generator.
     """
     def __init__(self, my_drone, role: DroneRole, cnd_id: Optional[str] = None, queue_capacity: int = 50):
         """
@@ -523,7 +421,7 @@ class MACLayer:
 
         # Get channel simulator
         self.channel = my_drone.simulator.channel
-        self.env = my_drone.env
+        self.env = my_drone.env # SimPy environment reference
 
         # Initialize MAC queue
         self.queue = MACQueue(max_capacity=queue_capacity)
@@ -532,6 +430,7 @@ class MACLayer:
         self.csma = CSMACA(
             channel=self.channel,
             my_drone=my_drone,
+            env=self.env, # Pass the SimPy environment
             min_backoff=0.01,
             max_backoff=0.1
         )
@@ -555,11 +454,10 @@ class MACLayer:
             get_position_func=lambda: getattr(my_drone, 'coords', None)
         )
 
-        # Initialize Neighbor Table
-        self.neighbor_table = NeighborTable(expiry_timeout=10.0)
+        # Neighbor Table initialization REMOVED
 
         # Initialize Metrics
-        self.metrics = Metrics(node_id=self.node_id)
+        self.metrics = Metrics(node_id=self.node_id) # The position of this was not changed
 
         # State
         self.sequence_num = 0
@@ -574,12 +472,9 @@ class MACLayer:
         Send data (called by Network Layer or GUI).
     
         This is the MAC layer's SERVICE INTERFACE for upper layers.
-        Network Layer (or GUI for testing) calls this to transmit data.
-    
+        
         Args:
             payload: Data bytes to send (comes from Network Layer)
-                - For workers: Network Layer provides routing info + data
-                - For C&C: Network Layer provides aggregated data
             
         Returns:
             True if queued successfully, False if queue full
@@ -612,12 +507,9 @@ class MACLayer:
         Receive data (called by Network Layer or GUI).
 
         This is the MAC layer's SERVICE INTERFACE for upper layers.
-        Network Layer (or GUI for testing) calls this to retrieve received data.
 
         Returns:
             (source_id, payload) tuple if data available, None otherwise
-                - source_id: Which drone sent this
-                - payload: The data bytes (Network Layer will parse this)
         """
         if len(self.received_data_frames) == 0:
             return None
@@ -627,12 +519,12 @@ class MACLayer:
 
     def process_outgoing(self):
         """
-        Process outgoing queue, transmit waiting frames
+        Process outgoing queue, transmit waiting frames. This is a SimPy process.
 
         Call this repeatedly in main even loop to send queue frames
         """
-
-        # Check for ACK timeouts and handle retries
+        self.ack_retry.check_timeouts_and_retry() # Must be called regularly
+        
         if not self.queue.is_empty():
             frame = self.queue.dequeue()
             if frame:
@@ -640,7 +532,8 @@ class MACLayer:
 
                 # Try CSMA/CA transmission
                 # This calls ProbChannel.unicast_put() or ProbChannel.broadcast_put()
-                success = self.csma.transmit_with_csma(frame)
+                # ORIGINAL: success = self.csma.transmit_with_csma(frame)
+                success = yield self.env.process(self.csma.transmit_with_csma(frame)) # <--- CHANGE: Yield the CSMA process
 
                 if success:
                     self.metrics.record_transmission(frame.frame_type)
@@ -663,14 +556,8 @@ class MACLayer:
             self.metrics.record_transmission(FrameType.BEACON)
 
     def cleanup_neighbors(self):
-        """
-        Remove expired neighbors from table
-        Call this periodically (every 5-10 seconds)
-
-        Returns:
-            Number of neighbors removed
-        """
-        return self.neighbor_table.remove_expired()
+        # Method body removed as NeighborTable is removed.
+        pass
 
     def get_metrics(self) -> Dict:
         """
@@ -683,36 +570,11 @@ class MACLayer:
         return self.metrics.get_summary()
 
     def get_neighbors(self) -> List[Neighbor]:
-        """
-        Get list of active neighbors
-
-        Returns:
-            List of Neighbor objects that have not expired
-        """
-        return self.neighbor_table.get_active()
+        # Method body removed as NeighborTable is removed.
+        return []
 
     def should_move_closer_to_cnd(self) -> bool:
-        """
-        Check if worker drone should move closer to C&C for better signal
-
-        Only applies to WORKER_DRONE role.
-
-        Returns:
-            True if it should move closer, False otherwise
-        """
-
-        if self.role != DroneRole.WORKER_DRONE:
-            return False
-
-        # Get signal strength to C&C
-        signal = self.neighbor_table.get_signal_strength_to_cnd()
-
-        # If weak signal and have data to send, move closer
-        WEAK_SIGNAL_THRESHOLD = 0.3
-
-        if signal < WEAK_SIGNAL_THRESHOLD and not self.queue.is_empty():
-            return True
-
+        # Method body removed as NeighborTable is removed.
         return False
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -810,4 +672,3 @@ class Metrics:
             "data_tx_rate_per_sec": round(data_tx_rate, 2),
             "tx_efficiency_percent": round(tx_efficiency, 2)
         }
-    
