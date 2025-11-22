@@ -27,7 +27,7 @@ class Phy:
         self.mac = mac
         self.env = mac.env
         self.my_drone = mac.my_drone
-        self.profile = wifi_11ac  # Our tech_profile object instantiation. 
+        self.profile = wifi_direct  # Our tech_profile object instantiation. 
         
         # Choose default power (TX)
         if self.profile.tx_power_levels:

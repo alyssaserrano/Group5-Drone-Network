@@ -7,5 +7,7 @@ __pycache__
 *.pywz
 *.log
 *.gif
+.vscode/
+venv/
 .vscode//UAV_venv/
 .venv/
