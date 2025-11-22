@@ -1,5 +1,7 @@
 import random
 from phy.channel import Channel
+from simulator.log import logger
+
 
 class ProbChannel(Channel):
     """
@@ -30,7 +32,7 @@ class ProbChannel(Channel):
         """
         #print(f"[DEBUG] ProbChannel.unicast_put called for dst_id={dst_id}")
         if self.drop_packet():
-            print(f"[CHANNEL] Unicast packet to drone {dst_id} LOST (p={self.loss_prob})")
+            logger.info(f"[CHANNEL] Unicast packet to drone {dst_id} LOST (p={self.loss_prob})")
             return
         super().unicast_put(value, dst_id)
         
@@ -39,11 +41,11 @@ class ProbChannel(Channel):
         same here just loops through all drones (broadcast)
         
         """
-        #print(f"[DEBUG] ProbChannel.broadcast_put called")
-        #print(f"[DEBUG] pipes keys: {list(self.pipes.keys())}")
+        print(f"[DEBUG] ProbChannel.broadcast_put called")
+        print(f"[DEBUG] pipes keys: {list(self.pipes.keys())}")
         for key in self.pipes.keys():
             if self.drop_packet():
-                print(f"[CHANNEL] Broadcast packet to drone {key} LOST (p={self.loss_prob})")
+                logger.info(f"[CHANNEL] Broadcast packet to drone {key} LOST (p={self.loss_prob})")
                 continue
             super().unicast_put(value, key)
             

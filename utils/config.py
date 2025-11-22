@@ -61,15 +61,17 @@ HELLO_PACKET_LENGTH = IP_HEADER_LENGTH + MAC_HEADER_LENGTH + PHY_HEADER_LENGTH +
 
 # define the range of "id" of different types of packets
 """
-|--------------|--------------|--------------|--------------|--------------|
-0            10000          20000          30000          40000    
-|   data pkt   |   hello pkt  |    ack pkt   |    vf pkt    |   grad msg   |
+|--------------|--------------|--------------|--------------|--------------|--------------|--------------|
+0            10000          20000          30000          40000          50000          60000    
+|   data pkt   |   hello pkt  |    ack pkt   |    vf pkt    |   grad msg   |    RREQ pkt  |   RREP pkt   |
 """
 GL_ID_DATA_PACKET = 0
 GL_ID_HELLO_PACKET = 10000
 GL_ID_ACK_PACKET = 20000
 GL_ID_VF_PACKET = 30000
 GL_ID_GRAD_MESSAGE = 40000
+GL_ID_RREQ_PACKET = 50000
+GL_ID_RREP_PACKET = 60000
 ############################################
 GL_ID_TC_PACKET = 0  # Global ID counter for OLSR Topology Control packets
 ############################################

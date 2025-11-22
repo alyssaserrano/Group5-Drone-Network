@@ -59,7 +59,7 @@ class Aodv:
 
         # No route: initiate RREQ as control packet and buffer the data at origin
         # Create an RREQ packet object and ask Drone to transmit it (enquire=True)
-        config.GL_ID_HELLO_PACKET += 1
+        config.GL_ID_RREQ_PACKET += 1
         channel_id = self.my_drone.channel_assigner.channel_assign()
         rreq = RREQPacket(origin=self.my_drone.identifier,
                           rreq_id=self.rreq_id,
@@ -68,7 +68,7 @@ class Aodv:
                           hop_count=0,
                           path=[self.my_drone.identifier],
                           creation_time=self.env.now,
-                          packet_id=config.GL_ID_HELLO_PACKET,
+                          packet_id=config.GL_ID_RREQ_PACKET,
                           simulator=self.simulator,
                           channel_id=channel_id)
         rreq.transmission_mode = 1
@@ -117,7 +117,7 @@ class Aodv:
                 rep_dst_seq = self.dest_seqno
                 rep_hops = 0
                 # create RREP and send back to previous hop
-                config.GL_ID_HELLO_PACKET += 1
+                config.GL_ID_RREP_PACKET += 1
                 channel_id = self.my_drone.channel_assigner.channel_assign()
                 rrep = RREPPacket(rep_src=self.my_drone.identifier,
                                    origin=packet.origin,
@@ -125,7 +125,7 @@ class Aodv:
                                    rep_hops=rep_hops,
                                    rep_path=list(packet.path) + [self.my_drone.identifier],
                                    creation_time=self.env.now,
-                                   packet_id=config.GL_ID_HELLO_PACKET,
+                                   packet_id=config.GL_ID_RREP_PACKET,
                                    simulator=self.simulator,
                                    channel_id=channel_id)
                 # send unicast back to the neighbor that forwarded the RREQ
@@ -141,7 +141,7 @@ class Aodv:
             if entry is not None and entry.get('seq', 0) >= packet.dst_seq_req and entry.get('seq', 0) != 0:
                 rep_dst_seq = entry.get('seq', 0)
                 rep_hops = entry.get('hops', 0)
-                config.GL_ID_HELLO_PACKET += 1
+                config.GL_ID_RREP_PACKET += 1
                 channel_id = self.my_drone.channel_assigner.channel_assign()
                 rrep = RREPPacket(rep_src=self.my_drone.identifier,
                                    origin=packet.origin,
@@ -149,7 +149,7 @@ class Aodv:
                                    rep_hops=rep_hops,
                                    rep_path=list(packet.path) + [self.my_drone.identifier],
                                    creation_time=self.env.now,
-                                   packet_id=config.GL_ID_HELLO_PACKET,
+                                   packet_id=config.GL_ID_RREP_PACKET,
                                    simulator=self.simulator,
                                    channel_id=channel_id)
                 # reply unicast back to the neighbor who sent this RREQ
@@ -267,7 +267,7 @@ class Aodv:
                         # initialize if missing
                         self.rreq_seen = set([(me, dst_id)])
                         
-                    config.GL_ID_HELLO_PACKET += 1
+                    config.GL_ID_RREQ_PACKET += 1
                     channel_id = self.my_drone.channel_assigner.channel_assign()
                     rreq = RREQPacket(origin=self.my_drone.identifier,
                                     rreq_id=self.rreq_id,
@@ -276,7 +276,7 @@ class Aodv:
                                     hop_count=0,
                                     path=[self.my_drone.identifier],
                                     creation_time=self.env.now,
-                                    packet_id=config.GL_ID_HELLO_PACKET,
+                                    packet_id=config.GL_ID_RREQ_PACKET,
                                     simulator=self.simulator,
                                     channel_id=channel_id)
                     rreq.transmission_mode = 1

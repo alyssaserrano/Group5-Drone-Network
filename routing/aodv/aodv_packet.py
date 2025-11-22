@@ -30,3 +30,4 @@ class RREPPacket(Packet):
         self.rep_hops = rep_hops
         self.rep_path = list(rep_path)
         self.transmission_mode = 0  # unicast by default when forwarded
+        self.next_hop_id = None  # to be set when forwarding
