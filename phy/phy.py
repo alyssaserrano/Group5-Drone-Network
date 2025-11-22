@@ -30,7 +30,7 @@ class Phy:
         self.mac = mac
         self.env = mac.env
         self.my_drone = mac.my_drone
-        self.profile = wifi_11n  # Our tech_profile object instantiation. 
+        self.profile = wifi_direct  # Our tech_profile object instantiation. 
 
         # Debug for knowing if it is using our tech_profile.
         #print(f"[PHY INIT] drone {getattr(self.my_drone, 'identifier', '?')} assigned profile: {self.profile.name}, TX_mW={self.profile.energy_model.get('TX', 'N/A')}")
