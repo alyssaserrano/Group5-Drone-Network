@@ -19,7 +19,6 @@ class ProbChannel(Channel):
         returns True if random produces a number less than 0.15, False otherwise
         """
         result = random.random() < self.loss_prob
-        print(f"[DEBUG] drop_packet: loss_prob={self.loss_prob}, will_drop={result}")
         return result
     
     #Override unicast to add preset packet loss feature
@@ -32,7 +31,7 @@ class ProbChannel(Channel):
         """
         #print(f"[DEBUG] ProbChannel.unicast_put called for dst_id={dst_id}")
         if self.drop_packet():
-            logger.info(f"[CHANNEL] Unicast packet to drone {dst_id} LOST (p={self.loss_prob})")
+            #logger.info(f"[CHANNEL] Unicast packet to drone {dst_id} LOST (p={self.loss_prob})")
             return
         super().unicast_put(value, dst_id)
         
@@ -41,11 +40,11 @@ class ProbChannel(Channel):
         same here just loops through all drones (broadcast)
         
         """
-        print(f"[DEBUG] ProbChannel.broadcast_put called")
-        print(f"[DEBUG] pipes keys: {list(self.pipes.keys())}")
+        #print(f"[DEBUG] ProbChannel.broadcast_put called")
+        #print(f"[DEBUG] pipes keys: {list(self.pipes.keys())}")
         for key in self.pipes.keys():
             if self.drop_packet():
-                logger.info(f"[CHANNEL] Broadcast packet to drone {key} LOST (p={self.loss_prob})")
+                #logger.info(f"[CHANNEL] Broadcast packet to drone {key} LOST (p={self.loss_prob})")
                 continue
             super().unicast_put(value, key)
             
@@ -56,7 +55,7 @@ class ProbChannel(Channel):
         #print(f"[DEBUG] ProbChannel.multicast_put called")
         for dst_id in dst_id_list:
             if self.drop_packet():
-                print(f"[CHANNEL] Multicast packet to drone {dst_id} LOST (p={self.loss_prob})")
+                #print(f"[CHANNEL] Multicast packet to drone {dst_id} LOST (p={self.loss_prob})")
                 continue
             super().unicast_put(value, dst_id)
             

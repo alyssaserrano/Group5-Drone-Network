@@ -41,14 +41,15 @@ class Phy:
         # Debug for knowing if it is using our tech_profile.
         #print(f"[PHY INIT] drone {getattr(self.my_drone, 'identifier', '?')} assigned profile: {self.profile.name}, TX_mW={self.profile.energy_model.get('TX', 'N/A')}")
         
+    # TODO: Figure out why energy goes negative
     def _consume_energy(self, mode, duration_s):
+
         power_mw = self.profile.energy_model.get(mode)
         if power_mw is None:
             return
 
         power_w = power_mw / 1000.0
         energy_j = power_w * duration_s
-        # Not subtracting energy yet to avoid affecting sim
         self.my_drone.residual_energy -= energy_j
 
         # DEBUG
@@ -61,7 +62,7 @@ class Phy:
         will call this when a packet arrives.
         """
         # duration of receiving this packet
-        rx_duration_s = packet.packet_length / config.BIT_RATE
+        rx_duration_s = packet.packet_length / self.profile.bit_rate
 
         # FUTURE actual RX accounting:
         self._consume_energy("RX", rx_duration_s)
@@ -101,7 +102,7 @@ class Phy:
         #print(f"[PHY TX] drone {self.my_drone.identifier} unicast using profile '{self.profile.name}' | profile_TX_mW={self.profile.energy_model.get('TX','N/A')} | config_TX={config.TRANSMITTING_POWER}")
 
         # Calculate transmission duration
-        tx_duration_s = packet.packet_length / config.BIT_RATE
+        tx_duration_s = packet.packet_length / self.profile.bit_rate
 
         # Use power model to consume TX energy
         self._consume_energy("TX", tx_duration_s)
@@ -122,7 +123,7 @@ class Phy:
         # Debug
         #print(f"[PHY TX] drone {self.my_drone.identifier} broadcast using profile '{self.profile.name}' | profile_TX_mW={self.profile.energy_model.get('TX','N/A')} | config_TX={config.TRANSMITTING_POWER}")
 
-        tx_duration_s = packet.packet_length / config.BIT_RATE
+        tx_duration_s = packet.packet_length / self.profile.bit_rate
 
         # Use power model to consume TX energy for sender
         self._consume_energy("TX", tx_duration_s)
@@ -152,7 +153,7 @@ class Phy:
         #print(f"[PHY TX] drone {self.my_drone.identifier} multicast using profile '{self.profile.name}' | profile_TX_mW={self.profile.energy_model.get('TX','N/A')} | config_TX={config.TRANSMITTING_POWER}")
 
         # Calculate transmission duration
-        tx_duration_s = packet.packet_length / config.BIT_RATE
+        tx_duration_s = packet.packet_length / self.profile.bit_rate
 
         # Use power model to consume TX energy
         self._consume_energy("TX", tx_duration_s)
