@@ -41,8 +41,8 @@ class ProbChannel(Channel):
         same here just loops through all drones (broadcast)
         
         """
-        print(f"[DEBUG] ProbChannel.broadcast_put called")
-        print(f"[DEBUG] pipes keys: {list(self.pipes.keys())}")
+        # print(f"[DEBUG] ProbChannel.broadcast_put called")
+        # print(f"[DEBUG] pipes keys: {list(self.pipes.keys())}")
         for key in self.pipes.keys():
             if self.drop_packet():
                 logger.info(f"[CHANNEL] Broadcast packet to drone {key} LOST (p={self.loss_prob})")

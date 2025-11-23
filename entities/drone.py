@@ -6,6 +6,7 @@ import queue
 from simulator.log import logger
 from entities.packet import DataPacket
 from mac.csma_ca import CsmaCa
+from mac.csma_ca_v2 import CsmaCaV2
 from mobility.gauss_markov_3d import GaussMarkov3D
 from energy.energy_model import EnergyModel
 from allocation.channel_assignment import ChannelAssigner
@@ -96,7 +97,8 @@ class Drone:
         self.transmitting_queue = queue.Queue()  # queue in the real sense
         self.waiting_list = []
 
-        self.mac_protocol = CsmaCa(self)
+        # self.mac_protocol = CsmaCa(self)
+        self.mac_protocol = CsmaCaV2(self)
         self.mac_process_dict = dict()
         self.mac_process_finish = dict()
         self.mac_process_count = 0
@@ -104,10 +106,10 @@ class Drone:
 
         ###################### Added by Networks Group #############################
         # self.routing_protocol = Dsdv(self.simulator, self)
-        # from routing.olsr.olsr import Olsr
-        # self.routing_protocol = Olsr(self.simulator, self)
-        from routing.aodv.aodv import Aodv
-        self.routing_protocol = Aodv(self.simulator, self)
+        from routing.olsr.olsr import Olsr
+        self.routing_protocol = Olsr(self.simulator, self)
+        # from routing.aodv.aodv import Aodv
+        # self.routing_protocol = Aodv(self.simulator, self)
         ############################################################################
 
         self.mobility_model = GaussMarkov3D(self)
