@@ -19,7 +19,7 @@ class ProbChannel(Channel):
         returns True if random produces a number less than 0.15, False otherwise
         """
         result = random.random() < self.loss_prob
-        #print(f"[DEBUG] drop_packet: loss_prob={self.loss_prob}, will_drop={result}")
+        print(f"[DEBUG] drop_packet: loss_prob={self.loss_prob}, will_drop={result}")
         return result
     
     #Override unicast to add preset packet loss feature
