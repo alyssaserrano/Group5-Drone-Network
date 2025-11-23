@@ -5,8 +5,7 @@ import math
 import queue
 from simulator.log import logger
 from entities.packet import DataPacket
-from routing.dsdv.dsdv import Dsdv
-from mac.csma_ca import CsmaCa
+from mac.Link_MAC import MACLayer, DroneRole
 from mobility.gauss_markov_3d import GaussMarkov3D
 from energy.energy_model import EnergyModel
 from allocation.channel_assignment import ChannelAssigner
@@ -97,13 +96,36 @@ class Drone:
         self.transmitting_queue = queue.Queue()  # queue in the real sense
         self.waiting_list = []
 
-        self.mac_protocol = CsmaCa(self)
-        self.mac_process_dict = dict()
-        self.mac_process_finish = dict()
-        self.mac_process_count = 0
-        self.enable_blocking = 1  # enable "stop-and-wait" protocol
+        ###################### Added by MAC #############################
+        # Determine role
+        role = DroneRole.COMMAND_CONTROL if node_id == 0 else DroneRole.WORKER_DRONE
+        cnd_id = "0" if role == DroneRole.WORKER_DRONE else None
 
-        self.routing_protocol = Dsdv(self.simulator, self)
+        # Initialize MAC layer with proper parameters
+        self.mac_protocol = MACLayer(
+            env=env,
+            my_drone=self,
+            role=role,
+            cnd_id=cnd_id,
+            queue_capacity=100
+        )
+
+        # No longer need these (MAC handles internally)
+        # self.mac_protocol = CsmaCa(self)
+        # self.mac_process_dict = dict()
+        # self.mac_process_finish = dict()
+        # self.mac_process_count = 0
+        # self.enable_blocking = 1  # enable "stop-and-wait" protocol
+        ############################################################################
+
+
+        ###################### Added by Networks Group #############################
+        # self.routing_protocol = Dsdv(self.simulator, self)
+        # from routing.olsr.olsr import Olsr
+        # self.routing_protocol = Olsr(self.simulator, self)
+        from routing.aodv.aodv import Aodv
+        self.routing_protocol = Aodv(self.simulator, self)
+        ############################################################################
 
         self.mobility_model = GaussMarkov3D(self)
         # self.motion_controller = VfMotionController(self)
@@ -193,21 +215,22 @@ class Drone:
         "head-of-line blocking problem"
         """
 
-        if self.enable_blocking:
-            if not self.mac_protocol.wait_ack_process_finish:
-                flag = False  # there is currently no waiting process for ACK
-            else:
-                # get the latest process status
-                final_indicator = list(self.mac_protocol.wait_ack_process_finish.items())[-1]
-
-                if final_indicator[1] == 0:
-                    flag = True  # indicates that the drone is still waiting
-                else:
-                    flag = False  # there is currently no waiting process for ACK
-        else:
-            flag = False
-
-        return flag
+        # if self.enable_blocking:
+        #     if not self.mac_protocol.wait_ack_process_finish:
+        #         flag = False  # there is currently no waiting process for ACK
+        #     else:
+        #         # get the latest process status
+        #         final_indicator = list(self.mac_protocol.wait_ack_process_finish.items())[-1]
+        #
+        #         if final_indicator[1] == 0:
+        #             flag = True  # indicates that the drone is still waiting
+        #         else:
+        #             flag = False  # there is currently no waiting process for ACK
+        # else:
+        #     flag = False
+        #
+        # return flag
+        return False # MAC handles internally
 
     def feed_packet(self):
         """
@@ -293,15 +316,16 @@ class Drone:
                             pkd.number_retransmission_attempt[self.identifier])
 
                 # every time the drone initiates a data packet transmission, "mac_process_count" will be increased by 1
-                self.mac_process_count += 1
+                #self.mac_process_count += 1
 
-                key=''.join(['mac_send', str(self.identifier), '_', str(pkd.packet_id)])
+                #key=''.join(['mac_send', str(self.identifier), '_', str(pkd.packet_id)])
 
-                mac_process = self.env.process(self.mac_protocol.mac_send(pkd))
-                self.mac_process_dict[key] = mac_process
-                self.mac_process_finish[key] = 0
+                #mac_process = self.env.process(self.mac_protocol.mac_send(pkd))
+                self.mac_protocol.send(pkd)
+                # self.mac_process_dict[key] = mac_process
+                # self.mac_process_finish[key] = 0
 
-                yield mac_process
+                yield self.env.timeout(1)
         else:
             pass
 

@@ -1,7 +1,7 @@
 import random
-import time
+import simpy
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, List, Tuple, Dict, Callable
 
@@ -10,6 +10,7 @@ class FrameType(Enum):
     DATA = 1
     ACK = 2
     BEACON = 3
+
 
 class DroneRole(Enum):
     COMMAND_CONTROL = 1
@@ -22,8 +23,8 @@ class MACFrame:
     source: str
     dest: Optional[str]              # NONE if sending a broadcast
     seq_num: int
-    payload: bytes
-    timestamp: float = field(default_factory=time.time)
+    payload: object
+    timestamp: float
     retry_count: int = 0
 
 @dataclass
@@ -99,9 +100,117 @@ class MACQueue:
 # ---------------------------------------------------------------------------------------------------------------------
 # NEIGHBOR MANAGEMENT
 # ---------------------------------------------------------------------------------------------------------------------
-# The NeighborTable class has been entirely removed from Halie's feedback.
-# Neighbor tracking is now handled by the Routing/Topology layers.
+class NeighborTable:
+    """
+    C&C drone keeps track of all worker drones.
+    Worker drone only tracks C&C drone.
+    """
+    def __init__(self, env, expiry_timeout: float = 10.0 * 1e6):      # 10 seconds in ms.
+        """
+        Initialized neighbor table.
 
+        Args:
+            expiry_timeout: Microseconds before the neighbor is dropped from the table.
+        """
+        self.env = env
+        self.neighbor_table = {}
+        self.expiry_timeout = expiry_timeout
+        self.cnd_drone_id = None
+
+    def add_or_update(self, node_id: str, role: DroneRole, signal_strength: float = 1.0,
+                      position: Optional[Tuple[float, float, float]] = None):
+        """
+        Add new neighbor or update existing one.
+
+        Args:
+            node_id: Unique identifier
+            role: C&C or WORKER
+            signal_strength: default 1.0
+            position: Current position of the drone
+        """
+        current_time = self.env.now
+
+        # Tracks if it is the C&C drone.
+        if role == DroneRole.COMMAND_CONTROL:
+            self.cnd_drone_id = node_id
+
+        # Check if neighbor already exists in the table
+        if node_id in self.neighbor_table:
+            # Neighbor exist, update it
+            neighbor = self.neighbor_table[node_id]
+            neighbor.last_seen = current_time        # Update timestamp
+            neighbor.signal_strength = signal_strength
+            if position:
+                neighbor.position = position
+        else:
+            # New neighbor, add it
+            self.neighbor_table[node_id] = Neighbor(
+                node_id = node_id,
+                role = role,
+                last_seen = current_time,
+                signal_strength = signal_strength,
+                position = position
+            )
+
+    def get_cnd_drone(self) -> Optional[Neighbor]:
+        """
+        Get the C&C drone information, will be used by workers to find their hub
+        """
+        if self.cnd_drone_id and self.cnd_drone_id in self.neighbor_table:
+            return self.neighbor_table[self.cnd_drone_id]
+        return None
+
+    def get_active(self) -> List[Neighbor]:
+        """
+        Get all neighbors that have not expired.
+
+        Returns:
+            List of Neighbor objects that are still active.
+        """
+        current_time = self.env.now
+        active_neighbors = []
+
+        for neighbor in self.neighbor_table.values():
+            time_last_seen = current_time - neighbor.last_seen
+            if time_last_seen < self.expiry_timeout:
+                active_neighbors.append(neighbor)
+
+        return active_neighbors
+
+    def remove_expired(self) -> int:
+        """
+        Remove the expired neighbors from the list.
+
+        Returns:
+            Number of remove neighbors.
+        """
+        current_time = self.env.now
+        expired_neighbors = []
+
+        for node_id, neighbor in self.neighbor_table.items():
+            time_last_seen = current_time - neighbor.last_seen
+            if time_last_seen >= self.expiry_timeout:
+                expired_neighbors.append(node_id)
+
+        for node_id in expired_neighbors:
+            del self.neighbor_table[node_id]
+
+        return len(expired_neighbors)
+
+    def get_signal_strength_to_cnd(self) -> float:
+        """
+        Get signal strength to C&C drone. Used by worker drones to decide if
+        they need to move closer to the C&C before transmitting data.
+
+        Returns:
+            Signal strength to C&C (0.0-1.0)
+            0.0 if C&C is not found
+        """
+        cnd = self.get_cnd_drone()              # Get C&C neighbor entry
+
+        # if C&C is found, return its signal strength
+        # Otherwise return 0.0 (no connection)
+        return cnd.signal_strength if cnd else 0.0
 
 # ---------------------------------------------------------------------------------------------------------------------
 # CSMA/CA
@@ -109,27 +218,49 @@ class MACQueue:
 class CSMACA:
     """
     Implements the Carrier Sense Multiple Access with Collision Avoidance CSMA/CA protocol.
-    Uses SimPy environment for non-blocking wait times.
     """
-    def __init__(self, channel, my_drone, env, min_backoff: float = 0.01, max_backoff: float = 0.1): # <--- CHANGE: Added 'env' to constructor
+    def __init__(self, channel, my_drone_id, env, min_backoff: float = 0.01 * 1e6, max_backoff: float = 0.1 * 1e6):
         """
         Initialize CSMA/CA controller
 
         Args:
             channel:ProbChannel object from prob_channel.py
-            my_drone: Reference to drone object
+            my_drone_id: Drone.s ID (integer).
             env: SimPy Environment for simulated time operations.
             min_backoff: Minimum backoff time in seconds.
             max_backoff: Maximum backoff time in seconds.
         """
         self.channel = channel
-        self.my_drone = my_drone
-        self.env = env # <--- Halie's suggestion: Stored env
+        self.my_drone_id = my_drone_id
+        self.env = env
         self.min_backoff = min_backoff
         self.max_backoff = max_backoff
-        self.current_backoff = min_backoff           # Starts at minimum
 
-    def transmit_with_csma(self, frame: MACFrame): # <--- CHANGE: Removed -> bool, now returns a generator/process
+    def _is_channel_busy(self) -> bool:
+        """
+        Check if channel is busy (carrier sensing)
+        """
+        # Check if any drone has packets in their inbox that are currently being transmitted
+        # A packet is "in transmission" if it was inserted recently
+        current_time = self.env.now
+
+        # Approximate max transmission time (can be refined based on config)
+        max_tx_time = 1000  # microseconds (1ms) - adjust based on your frame sizes
+
+        for drone_id, pipe in self.channel.pipes.items():
+            if drone_id == self.my_drone_id:
+                continue  # Don't check our own pipe
+
+            # Check if this pipe has recent activity
+            for item in pipe:
+                if len(item) >= 2:  # [packet, insertion_time, ...]
+                    insertion_time = item[1]
+                    if current_time - insertion_time < max_tx_time:
+                        return True  # Channel is busy
+
+        return False  # Channel is clear
+
+    def transmit_with_csma(self, frame: MACFrame):  # <--- CHANGE: Removed -> bool, now returns a generator/process
         """
         Attempt to transmit a frame using CSMA/CA
 
@@ -142,20 +273,13 @@ class CSMACA:
         """
         # Initial carrier sense - check if channel is busy
         if self._is_channel_busy():
-            # Channel is busy, defer transmission and try again later
-            return False
+            # Calculate random backoff time to prevent multiple drones from transmitting simultaneously
+            backoff_time = random.uniform(self.min_backoff, self.max_backoff)
 
-        # Calculate random backoff time to prevent multiple drones from transmitting simultaneously
-        backoff_time = random.uniform(0, self.current_backoff)
-
-        # Wait the backoff time, gives other drones an opportunity to access the channel
-        # Spreads out transmissions to avoid collisions
-        # ORIGINAL: time.sleep(backoff_time)
-        yield self.env.timeout(backoff_time) # <--- Halie's suggestion: Use SimPy's simulated time
-
-        # Final carrier sense, double-check the channel is available
-        if self._is_channel_busy():
-            # Channel became busy during backoff, delay transmission
+            # Wait the backoff time, gives other drones an opportunity to access the channel
+            # Spreads out transmissions to avoid collisions
+            # ORIGINAL: time.sleep(backoff_time)
+            yield self.env.timeout(backoff_time)  # <--- Halie's suggestion: Use SimPy's simulated time
             return False
 
         # Channel is available, safe to transmit
@@ -165,19 +289,13 @@ class CSMACA:
 
         else:
             # Unicast (data, ACK)
-            self.channel.unicast_put(frame, frame.dest)
+            dest_id = int(frame.dest)
+            self.channel.unicast_put(frame, dest_id)
+
+        yield self.env.timeout(0)       # Yield control immediately.
 
         # Return success
         return True
-
-    def _is_channel_busy(self) -> bool:
-        """
-        Check if channel is busy (carrier sensing)
-        """
-        # Simplified carrier sense for simulation
-        # For now always return true (channel is available)
-        # Random backoff provides collision avoidance.
-        return False
 
     def increase_backoff(self):
         """
@@ -203,7 +321,7 @@ class AckRetry:
     """
     Handles the ACKs and retransmissions.
     """
-    def __init__(self, mac_queue: MACQueue, csma_controller: CSMACA, channel, my_drone, max_retries: int = 3, ack_timeout: float = 0.05):
+    def __init__(self, env, mac_queue: MACQueue, csma_controller: CSMACA, channel, my_drone, max_retries: int = 3, ack_timeout: float = 0.05):
         """
         Initializes ACK/Retry handler.
 
@@ -216,13 +334,14 @@ class AckRetry:
             ack_timeout: Time to wait for an ACK before considering it a failure.
         """
         self.mac_queue = mac_queue
+        self.env = env
         self.csma_controller = csma_controller
         self.channel = channel
         self.my_drone = my_drone
         self.max_retries = max_retries
         self.ack_timeout = ack_timeout
         # Stores frames waiting for an ACK: { (dest, seq_num): MACFrame }
-        self.pending_acks: Dict[Tuple[str, int], MACFrame] = {}
+        self.pending_acks = {}
 
     def is_awaiting_ack(self, frame: MACFrame) -> bool:
         """Check if an ACK is expected for a given frame."""
@@ -263,7 +382,7 @@ class AckRetry:
         """
         Check for pending ACKs that have timed out and handle retransmission/dropping.
         """
-        current_time = time.time()
+        current_time = self.env.now
         frames_to_retry: List[MACFrame] = []
         keys_to_remove: List[Tuple[str, int]] = []
 
@@ -273,7 +392,7 @@ class AckRetry:
                 
                 if frame.retry_count < self.max_retries:
                     frame.retry_count += 1
-                    frame.timestamp = time.time() # Update timestamp for next timeout check
+                    frame.timestamp = self.env.now # Update timestamp for next timeout check
                     frames_to_retry.append(frame)
                     self.csma_controller.increase_backoff() # Increase backoff on failed attempt
                     # print(f"[RETRY] ACK timeout for {key}. Retrying (Attempt {frame.retry_count}).")
@@ -304,7 +423,8 @@ class AckRetry:
             source=node_id,
             dest=original_frame.source,
             seq_num=original_frame.seq_num,
-            payload=b'' # ACK frames typically have no payload
+            payload=b'', # ACK frames typically have no payload
+            timestamp=self.env.now
         )
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -314,7 +434,7 @@ class BeaconManager:
     """
     Send periodic broadcast beacons to announce presence to ground stations and other drones in the network.
     """
-    def __init__(self, node_id: str, role: DroneRole, channel, beacon_interval: float = 1.0,
+    def __init__(self, env, node_id: str, role: DroneRole, channel, beacon_interval: float = 1.0,
                  get_position_func: Callable[[], Optional[Tuple[float, float, float]]] = lambda: None):
         """
         Initialize Beacon Manager.
@@ -326,6 +446,7 @@ class BeaconManager:
             beacon_interval: Time in seconds between beacon transmissions.
             get_position_func: A function to call to get the drone's current position.
         """
+        self.env = env
         self.node_id = node_id
         self.role = role
         self.channel = channel
@@ -344,14 +465,14 @@ class BeaconManager:
 
     def needs_to_send_beacon(self) -> bool:
         """Check if it's time to send a new beacon."""
-        return (time.time() - self.last_beacon_time) >= self.beacon_interval
+        return (self.env.now - self.last_beacon_time) >= self.beacon_interval
 
     def create_beacon_frame(self) -> MACFrame:
         """
         Create a MACFrame for a beacon. The payload contains the drone's role and position.
         """
         self.seq_num_counter += 1
-        self.last_beacon_time = time.time()
+        self.last_beacon_time = self.env.now
         
         # Payload format: (role_value, position_tuple_or_None)
         position = self.get_position()
@@ -362,7 +483,8 @@ class BeaconManager:
             source=self.node_id,
             dest=None, # Broadcast frame
             seq_num=self.seq_num_counter,
-            payload=payload
+            payload=payload,
+            timestamp=self.env.now
         )
 
     @staticmethod
@@ -400,10 +522,8 @@ class MACLayer:
     """
     Main MAC Layer that integrates with prob_channel.py
     Primary interface for the drone to use the MAC layer services.
-    
-    NOTE: This class's process_outgoing method is now a SimPy generator.
     """
-    def __init__(self, my_drone, role: DroneRole, cnd_id: Optional[str] = None, queue_capacity: int = 50):
+    def __init__(self, env, my_drone, role: DroneRole, cnd_id: Optional[str] = None, queue_capacity: int = 50):
         """
         Initialize MAC Layer for the drone.
 
@@ -414,6 +534,7 @@ class MACLayer:
             queue capacity: Maximum queue size.
         """
         # Store references
+        self.env = env
         self.my_drone = my_drone
         self.node_id = my_drone.identifier
         self.role = role
@@ -421,43 +542,48 @@ class MACLayer:
 
         # Get channel simulator
         self.channel = my_drone.simulator.channel
-        self.env = my_drone.env # SimPy environment reference
 
         # Initialize MAC queue
         self.queue = MACQueue(max_capacity=queue_capacity)
 
         # Initialize CSMA/CA with ProbChannel
         self.csma = CSMACA(
+            env=self.env,
             channel=self.channel,
-            my_drone=my_drone,
-            env=self.env, # Pass the SimPy environment
-            min_backoff=0.01,
-            max_backoff=0.1
+            my_drone_id=my_drone.identifier,
+            min_backoff=0.01 * 1e6,
+            max_backoff=0.1 * 1e6
         )
 
         # Initialize ACK/Retry with ProbChannel
         self.ack_retry = AckRetry(
+            env=self.env,
             mac_queue=self.queue,
             csma_controller=self.csma,
             channel=self.channel,
             my_drone=my_drone,
             max_retries=3,
-            ack_timeout=0.05
+            ack_timeout=0.05 * 1e6
         )
 
         # Initialize Beacon Manager with ProbChannel
         self.beacon_manager = BeaconManager(
+            env=self.env,
             node_id=self.node_id,
             role=self.role,
             channel=self.channel,
-            beacon_interval=1.0,
+            beacon_interval=1.0 * 1e6,
             get_position_func=lambda: getattr(my_drone, 'coords', None)
         )
 
-        # Neighbor Table initialization REMOVED
+        # Initialize Neighbor Table
+        self.neighbor_table = NeighborTable(env=self.env, expiry_timeout=10.0 * 1e6)
 
         # Initialize Metrics
-        self.metrics = Metrics(node_id=self.node_id) # The position of this was not changed
+        self.metrics = Metrics(
+            env=self.env,
+            node_id=self.node_id
+        )
 
         # State
         self.sequence_num = 0
@@ -467,23 +593,38 @@ class MACLayer:
         if role == DroneRole.WORKER_DRONE and cnd_id is None:
             raise ValueError("Worker drones must specified cnd_id")
 
-    def send(self, payload: bytes) -> bool:
+        # Start SimPy processes.
+        self.env.process(self.process_outgoing())
+        self.env.process(self.send_beacon_if_needed())
+        self.env.process(self.cleanup_neighbors())
+
+    def send(self, network_packet) -> bool:
         """
         Send data (called by Network Layer or GUI).
     
         This is the MAC layer's SERVICE INTERFACE for upper layers.
-        
+
         Args:
             payload: Data bytes to send (comes from Network Layer)
+                - For workers: Network Layer provides routing info + data
+                - For C&C: Network Layer provides aggregated data
             
         Returns:
             True if queued successfully, False if queue full
         """
-        # Determine destination depending on role
+        # Serialize the network packet.
+        payload = network_packet
+
+        # Determine destination depending on role.
         if self.role == DroneRole.WORKER_DRONE:
-            dest = self.cnd_id      # Worker sends to C&C
+            dest = self.cnd_id      # Worker sends to C&C.
         else:
-            dest = None     # C&C broadcast
+            # For broadcast packets (HELLO packets)
+            if getattr(network_packet, 'transmission_mode', 0) == 1:
+                dest = None     # C&C broadcast.
+            else:
+                # Unicast - use next_hop_id from routing layer.
+                dest = str(network_packet.next_hop_id)
 
         # Create Data frame
         frame = MACFrame(
@@ -491,7 +632,8 @@ class MACLayer:
             source=self.node_id,
             dest=dest,
             seq_num=self.sequence_num,
-            payload=payload
+            payload=payload,
+            timestamp=self.env.now
         )
         self.sequence_num += 1
 
@@ -507,57 +649,75 @@ class MACLayer:
         Receive data (called by Network Layer or GUI).
 
         This is the MAC layer's SERVICE INTERFACE for upper layers.
+        Network Layer (or GUI for testing) calls this to retrieve received data.
 
         Returns:
             (source_id, payload) tuple if data available, None otherwise
+                - source_id: Which drone sent this
+                - payload: The data bytes (Network Layer will parse this)
         """
         if len(self.received_data_frames) == 0:
             return None
 
         frame = self.received_data_frames.popleft()
-        return frame.source, frame.payload
+        return frame.payload
 
     def process_outgoing(self):
         """
-        Process outgoing queue, transmit waiting frames. This is a SimPy process.
+        Process outgoing queue, transmit waiting frames
 
         Call this repeatedly in main even loop to send queue frames
         """
-        self.ack_retry.check_timeouts_and_retry() # Must be called regularly
-        
-        if not self.queue.is_empty():
-            frame = self.queue.dequeue()
-            if frame:
-                self.metrics.record_tx_attempt()
 
-                # Try CSMA/CA transmission
-                # This calls ProbChannel.unicast_put() or ProbChannel.broadcast_put()
-                # ORIGINAL: success = self.csma.transmit_with_csma(frame)
-                success = yield self.env.process(self.csma.transmit_with_csma(frame)) # <--- CHANGE: Yield the CSMA process
+        # Check for ACK timeouts and handle retries
+        self.ack_retry.check_timeouts_and_retry()  # Must be called regularly
 
-                if success:
-                    self.metrics.record_transmission(frame.frame_type)
+        while True:
+            if not self.queue.is_empty():
+                frame = self.queue.dequeue()
+                if frame:
+                    self.metrics.record_tx_attempt()
 
-                    # If DATA frame to specific dest, register for ACK
-                    if frame.frame_type == FrameType.DATA and frame.dest:
-                        self.ack_retry.register_sent_frame(frame)
-                else:
-                    # Channel is busy, retry
-                    self.queue.enqueue(frame)
-                    self.metrics.record_csma_deferral()
+                    # Try CSMA/CA transmission
+                    # This calls ProbChannel.unicast_put() or ProbChannel.broadcast_put()
+                    # ORIGINAL: success = self.csma.transmit_with_csma(frame)
+                    success = yield self.env.process(self.csma.transmit_with_csma(frame))  # <--- CHANGE: Yield the CSMA process
+
+                    if success:
+                        self.metrics.record_transmission(frame.frame_type)
+
+                        # If DATA frame to specific dest, register for ACK
+                        if frame.frame_type == FrameType.DATA and frame.dest:
+                            self.ack_retry.register_sent_frame(frame)
+                    else:
+                        # Channel is busy, retry
+                        self.queue.enqueue(frame)
+                        self.metrics.record_csma_deferral()
+
+            yield self.env.timeout(5)  # Check every 5 microseconds
 
     def send_beacon_if_needed(self):
         """
         Sends beacon if it's time.
         Call this periodically in main.
         """
-        if self.beacon_manager.needs_to_send_beacon():
-            self.beacon_manager.send_beacon()
-            self.metrics.record_transmission(FrameType.BEACON)
+        while True:
+            if self.beacon_manager.needs_to_send_beacon():
+                self.beacon_manager.send_beacon()
+                self.metrics.record_transmission(FrameType.BEACON)
+            yield self.env.timeout(self.beacon_manager.beacon_interval)
 
     def cleanup_neighbors(self):
-        # Method body removed as NeighborTable is removed.
-        pass
+        """
+        Remove expired neighbors from table
+        Call this periodically (every 5-10 seconds)
+
+        Returns:
+            Number of neighbors removed
+        """
+        while True:
+            self.neighbor_table.remove_expired()
+            yield self.env.timeout(5 * 1e6)
 
     def get_metrics(self) -> Dict:
         """
@@ -570,10 +730,38 @@ class MACLayer:
         return self.metrics.get_summary()
 
     def get_neighbors(self) -> List[Neighbor]:
-        # Method body removed as NeighborTable is removed.
-        return []
+        """
+        Get list of active neighbors
+
+        Returns:
+            List of Neighbor objects that have not expired
+        """
+        if hasattr(self, 'neighbor_table') and self.neighbor_table:
+            return self.neighbor_table.get_active()
+        return[]
 
     def should_move_closer_to_cnd(self) -> bool:
+        """
+        Check if worker drone should move closer to C&C for better signal
+
+        Only applies to WORKER_DRONE role.
+
+        Returns:
+            True if it should move closer, False otherwise
+        """
+
+        # if self.role != DroneRole.WORKER_DRONE:
+        #     return False
+        #
+        # # Get signal strength to C&C
+        # signal = self.neighbor_table.get_signal_strength_to_cnd()
+        #
+        # # If weak signal and have data to send, move closer
+        # WEAK_SIGNAL_THRESHOLD = 0.3
+        #
+        # if signal < WEAK_SIGNAL_THRESHOLD and not self.queue.is_empty():
+        #     return True
+
         # Method body removed as NeighborTable is removed.
         return False
 
@@ -584,9 +772,10 @@ class Metrics:
     """
     Keep track of performance matrics.
     """
-    def __init__(self, node_id: str):
+    def __init__(self, env, node_id: str):
+        self.env = env
         self.node_id = node_id
-        self.start_time = time.time()
+        self.start_time = self.env.now
         
         # Transmission/Reception Counts
         self.tx_data_frames = 0
@@ -645,7 +834,7 @@ class Metrics:
 
     def get_summary(self) -> Dict:
         """Generate a summary of all metrics."""
-        duration = time.time() - self.start_time
+        duration = self.env.now - self.start_time
         
         # Calculate derived metrics
         data_tx_rate = self.tx_data_frames / duration if duration > 0 else 0
@@ -672,3 +861,215 @@ class Metrics:
             "data_tx_rate_per_sec": round(data_tx_rate, 2),
             "tx_efficiency_percent": round(tx_efficiency, 2)
         }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# STANDALONE TEST
+# ---------------------------------------------------------------------------------------------------------------------
+# if __name__ == "__main__":
+#     """
+#     Standalone test for MAC layer - Run with: python Link_MAC.py
+#     Tests MAC layer functionality without requiring full simulation
+#     """
+#     print("\n" + "=" * 80)
+#     print("MAC LAYER STANDALONE TEST")
+#     print("=" * 80)
+#
+#     # Create minimal test environment
+#     print("\n[1/6] Creating SimPy environment...")
+#     import simpy
+#     env = simpy.Environment()
+#     print("Environment created")
+#
+#     # Create mock channel
+#     print("\n[2/6] Creating mock ProbChannel...")
+#     from phy.prob_channel import ProbChannel
+#     mock_channel = ProbChannel(env, loss_prob=0.15)
+#     print("Channel created with 15% loss probability")
+#
+#     # Create mock drones
+#     print("\n[3/6] Creating mock drones...")
+#
+#     class MockSimulator:
+#         def __init__(self, env, channel):
+#             self.env = env
+#             self.channel = channel
+#             self.seed = 2025
+#
+#     class MockDrone:
+#         def __init__(self, env, drone_id, simulator):
+#             self.env = env
+#             self.identifier = drone_id
+#             self.coords = (100.0 * drone_id, 200.0 * drone_id, 50.0)
+#             self.simulator = simulator
+#
+#     simulator = MockSimulator(env, mock_channel)
+#
+#     # Create C&C drone (ID=0)
+#     cnd_drone = MockDrone(env, 0, simulator)
+#     print(f"Created C&C drone (ID={cnd_drone.identifier})")
+#
+#     # Create worker drones (ID=1,2,3)
+#     worker_drones = [MockDrone(env, i, simulator) for i in range(1, 4)]
+#     print(f"Created {len(worker_drones)} worker drones")
+#
+#     # Create MAC layers
+#     print("\n[4/6] Creating MAC layers...")
+#     cnd_mac = MACLayer(
+#         env=env,
+#         my_drone=cnd_drone,
+#         role=DroneRole.COMMAND_CONTROL,
+#         cnd_id=None,
+#         queue_capacity=50
+#     )
+#     print(f"✓ C&C MAC layer initialized (role={cnd_mac.role.name})")
+#
+#     worker_macs = []
+#     for drone in worker_drones:
+#         mac = MACLayer(
+#             env=env,
+#             my_drone=drone,
+#             role=DroneRole.WORKER_DRONE,
+#             cnd_id="0",
+#             queue_capacity=50
+#         )
+#         worker_macs.append(mac)
+#         print(f"Worker {drone.identifier} MAC layer initialized")
+#
+#     # Test beacon transmission
+#     print("\n[5/6] Testing beacon transmission...")
+#     print("Running simulation for 5 seconds...")
+#     env.run(until=5 * 1e6)  # Run for 5 seconds
+#
+#     cnd_metrics = cnd_mac.get_metrics()
+#     beacons_sent = cnd_metrics.get('tx_beacon_frames', 0)
+#     print(f"C&C sent {beacons_sent} beacon frames (~5 expected)")
+#
+#     # Test data transmission
+#     print("\n[6/6] Testing data transmission...")
+#
+#     # Create mock network packet
+#     class MockNetworkPacket:
+#         def __init__(self, src, dst):
+#             self.src = src
+#             self.dst = dst
+#             self.packet_id = 999
+#             self.transmission_mode = 0  # unicast
+#             self.next_hop_id = 0
+#
+#     # Send data from worker to C&C
+#     mock_packet = MockNetworkPacket(src=1, dst=0)
+#     success = worker_macs[0].send(mock_packet)
+#     print(f"Worker 1 queued packet: {success}")
+#
+#     # Run a bit more to process the queue
+#     env.run(until=6 * 1e6)  # Run for 1 more second
+#
+#     # Check metrics
+#     print("\n" + "=" * 80)
+#     print("FINAL METRICS")
+#     print("=" * 80)
+#
+#     print("\n[C&C Drone 0]")
+#     for key, value in cnd_metrics.items():
+#         if not isinstance(value, str) or value:  # Skip separator keys
+#             print(f"  {key}: {value}")
+#
+#     print("\n[Worker Drone 1]")
+#     worker1_metrics = worker_macs[0].get_metrics()
+#     for key, value in worker1_metrics.items():
+#         if not isinstance(value, str) or value:
+#             print(f"  {key}: {value}")
+#
+#     # Test neighbor table
+#     print("\n" + "=" * 80)
+#     print("NEIGHBOR TABLE TEST")
+#     print("=" * 80)
+#
+#     # Manually add a neighbor for testing
+#     print("\n[Testing neighbor table operations...]")
+#     worker_macs[0].neighbor_table.add_or_update(
+#         node_id="0",
+#         role=DroneRole.COMMAND_CONTROL,
+#         signal_strength=0.95,
+#         position=(0, 0, 50)
+#     )
+#
+#     neighbors = worker_macs[0].get_neighbors()
+#     print(f"✓ Worker 1 has {len(neighbors)} neighbor(s)")
+#     if neighbors:
+#         for n in neighbors:
+#             print(f"  - Node {n.node_id}: {n.role.name}, Signal={n.signal_strength}")
+#
+#     # Test queue operations
+#     print("\n" + "=" * 80)
+#     print("QUEUE OPERATIONS TEST")
+#     print("=" * 80)
+#
+#     print("\n[Testing MAC queue...]")
+#     test_queue = MACQueue(max_capacity=5)
+#
+#     # Add frames
+#     for i in range(7):  # Add more than capacity
+#         frame = MACFrame(
+#             frame_type=FrameType.DATA,
+#             source="1",
+#             dest="0",
+#             seq_num=i,
+#             payload=f"Test {i}".encode(),
+#             timestamp=env.now
+#         )
+#         success = test_queue.enqueue(frame)
+#         status = "Good" if success else "Not good (queue full, oldest dropped)"
+#         print(f"  Frame {i}: {status}")
+#
+#     print(f"\nQueue size: {test_queue.size()}/{test_queue.max_capacity}")
+#     print(f"Total dropped: {test_queue.get_drop_count()}")
+#
+#     # Final verdict
+#     print("\n" + "=" * 80)
+#     print("TEST SUMMARY")
+#     print("=" * 80)
+#
+#     all_passed = True
+#
+#     # Check 1: Beacons sent
+#     if beacons_sent >= 4:  # Should have ~5 beacons
+#         print("Beacon transmission: PASS")
+#     else:
+#         print(f"Beacon transmission: FAIL (only {beacons_sent} beacons)")
+#         all_passed = False
+#
+#     # Check 2: Data queued
+#     if worker1_metrics['data_tx_frames'] >= 1:
+#         print("Data transmission: PASS")
+#     else:
+#         print("Data transmission: FAIL")
+#         all_passed = False
+#
+#     # Check 3: Neighbor table works
+#     if len(neighbors) > 0:
+#         print("Neighbor discovery: PASS")
+#     else:
+#         print("Neighbor discovery: FAIL")
+#         all_passed = False
+#
+#     # Check 4: Queue management
+#     if test_queue.get_drop_count() == 2:  # Should drop 2 (added 7 to capacity 5)
+#         print("Queue management: PASS")
+#     else:
+#         print(f"Queue management: FAIL (expected 2 drops, got {test_queue.get_drop_count()})")
+#         all_passed = False
+#
+#     # Check 5: Metrics tracking
+#     if cnd_metrics['tx_attempts'] > 0:
+#         print("Metrics tracking: PASS")
+#     else:
+#         print("Metrics tracking: FAIL")
+#         all_passed = False
+#
+#     print("\n" + "=" * 80)
+#     if all_passed:
+#         print("ALL TESTS PASSED - MAC LAYER IS WORKING!")
+#     else:
+#         print("SOME TESTS FAILED - CHECK OUTPUT ABOVE")
+#     print("=" * 80 + "\n")
