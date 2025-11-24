@@ -32,24 +32,24 @@ class CsmaCaV2:
         self.wait_ack_process_count = 0
         self.wait_ack_process = None
 
-        # --- v2 knobs (read from config with safe defaults) ---
-        # p-persistent probability when channel is idle to actually decrement one slot
-        self.p_tx = getattr(config, "CSMA_P_PERSIST", 0.6)
-        # max retries copied from config
-        self.max_retry = getattr(config, "MAX_RETRANSMISSION_ATTEMPT", 7)
+        # # --- v2 knobs (read from config with safe defaults) ---
+        # # p-persistent probability when channel is idle to actually decrement one slot
+        # self.p_tx = getattr(config, "CSMA_P_PERSIST", 0.6)
+        # # max retries copied from config
+        # self.max_retry = getattr(config, "MAX_RETRANSMISSION_ATTEMPT", 7)
 
-        # beacon controls
-        self.beacon_enabled = getattr(config, "BEACON_ENABLED", True)
-        # interval in microseconds (match your time units)
-        self.beacon_interval_us = getattr(config, "BEACON_INTERVAL_US", 100_000)  # 100 ms
-        # on-air length (bits) for beacon, used to compute TX time (fallback small)
-        self.beacon_length_bits = getattr(config, "BEACON_PACKET_LENGTH", 600)    # 75 bytes default
+        # # beacon controls
+        # self.beacon_enabled = getattr(config, "BEACON_ENABLED", True)
+        # # interval in microseconds (match your time units)
+        # self.beacon_interval_us = getattr(config, "BEACON_INTERVAL_US", 100_000)  # 100 ms
+        # # on-air length (bits) for beacon, used to compute TX time (fallback small)
+        # self.beacon_length_bits = getattr(config, "BEACON_PACKET_LENGTH", 600)    # 75 bytes default
 
         # try to start beacon loop (does not error if disabled)
-        if self.beacon_enabled:
-            # slight random jitter to avoid global alignment
-            jitter = self.rng_mac.randint(0, int(0.25 * self.beacon_interval_us))
-            self.env.process(self._beacon_loop(jitter))
+        # if self.beacon_enabled:
+        #     # slight random jitter to avoid global alignment
+        #     jitter = self.rng_mac.randint(0, int(0.25 * self.beacon_interval_us))
+        #     self.env.process(self._beacon_loop(jitter))
 
     # --------------------------
     # API: identical signatures
@@ -147,15 +147,7 @@ class CsmaCaV2:
                 logger.info('At time: %s (us) ---- UAV: %s back-off interrupted; waited=%s us',
                             self.env.now, self.my_drone.identifier, already_wait)
 
-                # Remaining time logic (keep identical semantics to v1)
-                # If interrupted before finishing DIFS, we must redo full DIFS + original bo_slots
-                if already_wait < config.DIFS_DURATION:
-                    to_wait = config.DIFS_DURATION
-                    # keep bo_slots untouched
-                else:
-                    # interrupted during backoff slotting; we "freeze" remaining backoff
-                    # we approximate remaining slots by leaving bo_slots as-is (frozen)
-                    to_wait = config.DIFS_DURATION
+                to_wait = config.DIFS_DURATION
                 # loop to retry
 
     def wait_ack(self, pkd):
