@@ -97,8 +97,8 @@ class Drone:
         self.transmitting_queue = queue.Queue()  # queue in the real sense
         self.waiting_list = []
 
-        # self.mac_protocol = CsmaCa(self)
-        self.mac_protocol = CsmaCaV2(self)
+        self.mac_protocol = CsmaCa(self)
+        # self.mac_protocol = CsmaCaV2(self)
         self.mac_process_dict = dict()
         self.mac_process_finish = dict()
         self.mac_process_count = 0

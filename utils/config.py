@@ -57,13 +57,18 @@ ACK_HEADER_LENGTH = 16 * 8  # header length of ACK packet, 16 byte
 ACK_PACKET_LENGTH = ACK_HEADER_LENGTH + 14 * 8  # bit
 
 HELLO_PACKET_PAYLOAD_LENGTH = 256  # bit
+RREQ_PACKET_PAYLOAD_LENGTH = 512
+RREP_PACKET_PAYLOAD_LENGTH = 384
+RERR_PACKET_PAYLOAD_LENGTH = 256
 HELLO_PACKET_LENGTH = IP_HEADER_LENGTH + MAC_HEADER_LENGTH + PHY_HEADER_LENGTH + HELLO_PACKET_PAYLOAD_LENGTH
-
+RREQ_PACKET_LENGTH  = IP_HEADER_LENGTH + MAC_HEADER_LENGTH + PHY_HEADER_LENGTH + RREQ_PACKET_PAYLOAD_LENGTH
+RREP_PACKET_LENGTH  = IP_HEADER_LENGTH + MAC_HEADER_LENGTH + PHY_HEADER_LENGTH + RREP_PACKET_PAYLOAD_LENGTH
+RERR_PACKET_LENGTH  = IP_HEADER_LENGTH + MAC_HEADER_LENGTH + PHY_HEADER_LENGTH + RERR_PACKET_PAYLOAD_LENGTH
 # define the range of "id" of different types of packets
 """
-|--------------|--------------|--------------|--------------|--------------|--------------|--------------|
-0            10000          20000          30000          40000          50000          60000    
-|   data pkt   |   hello pkt  |    ack pkt   |    vf pkt    |   grad msg   |    RREQ pkt  |   RREP pkt   |
+|--------------|--------------|--------------|--------------|--------------|--------------|--------------|--------------|
+0            10000          20000          30000          40000          50000          60000          70000
+|   data pkt   |   hello pkt  |    ack pkt   |    vf pkt    |   grad msg   |    RREQ pkt  |   RREP pkt   |   RERR pkt   |
 """
 GL_ID_DATA_PACKET = 0
 GL_ID_HELLO_PACKET = 10000
@@ -72,6 +77,7 @@ GL_ID_VF_PACKET = 30000
 GL_ID_GRAD_MESSAGE = 40000
 GL_ID_RREQ_PACKET = 50000
 GL_ID_RREP_PACKET = 60000
+GL_ID_RERR_PACKET = 70000
 ############################################
 GL_ID_TC_PACKET = 0  # Global ID counter for OLSR Topology Control packets
 ############################################
