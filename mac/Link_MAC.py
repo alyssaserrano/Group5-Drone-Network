@@ -5,6 +5,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, List, Tuple, Dict, Callable
 
+# Added pickle for deserializing the payload object
+import pickle
+# Added typing for the _deserialized_payload hint
+import typing
+
 
 class FrameType(Enum):
     DATA = 1
@@ -14,6 +19,18 @@ class FrameType(Enum):
 class DroneRole(Enum):
     COMMAND_CONTROL = 1
     WORKER_DRONE = 2
+
+# ORIGINAL MACFrame CLASS
+# @dataclass
+# class MACFrame:
+#     """MAC frame structure used in transmissions"""
+#     frame_type: FrameType
+#     source: str
+#     dest: Optional[str]              # NONE if sending a broadcast
+#     seq_num: int
+#     payload: bytes
+#     timestamp: float = field(default_factory=time.time)
+#     retry_count: int = 0
 
 @dataclass
 class MACFrame:
@@ -25,6 +42,77 @@ class MACFrame:
     payload: bytes
     timestamp: float = field(default_factory=time.time)
     retry_count: int = 0
+    
+    processed: int = 0
+
+    # Internal cache for the deserialized payload
+    _deserialized_payload: 'typing.Any' = field(default=None, repr=False, init=False)
+
+    def _get_payload_obj(self):
+        """Helper to deserialize payload only once."""
+        # Return from cache if available
+        if self._deserialized_payload:
+            return self._deserialized_payload
+        
+        # Try to deserialize
+        if self.payload:
+            try:
+                # We assume the payload is a pickled object
+                self._deserialized_payload = pickle.loads(self.payload)
+                return self._deserialized_payload
+            except Exception:
+                # This could be an ACK (empty payload) or BEACON (string payload).
+                # drone.py's receive logic mostly cares about DataPackets.
+                return None 
+        return None
+
+    def __getitem__(self, key):
+        """
+        HACK: Make this object subscriptable to be compatible with
+        the legacy drone.py receive logic.
+        
+        drone.py expects:
+        [0] = packet (object with .packet_length and .channel_id)
+        [1] = insertion_time (float)
+        [2] = transmitter (str)
+        [3] = processed (int, 0 or 1)
+        [4] = channel_used (int)
+        """
+        # Get the deserialized packet object
+        payload_obj = self._get_payload_obj()
+
+        if key == 0:
+            # packet object
+            return payload_obj
+        if key == 1:
+            # insertion_time
+            return self.timestamp
+        if key == 2:
+            # transmitter
+            return self.source
+        if key == 3:
+            # processed
+            return self.processed
+        if key == 4:
+            # channel_used
+            if payload_obj and hasattr(payload_obj, 'channel_id'):
+                # We assume the original packet object had a 'channel_id' attribute
+                return getattr(payload_obj, 'channel_id', None)
+            return None
+        
+        # If we get here, drone.py asked for an index we don't know
+        raise IndexError(f"MACFrame index {key} not supported")
+
+    def __setitem__(self, key, value):
+        """
+        HACK: Allow drone.py to set the 'processed' flag via item[3] = 1.
+        """
+        if key == 3:
+            self.processed = value
+        else:
+            # drone.py shouldn't be trying to set any other index
+            raise IndexError(f"MACFrame index {key} does not support setting")
+
 
 @dataclass
 class Neighbor:
@@ -810,4 +898,3 @@ class Metrics:
             "data_tx_rate_per_sec": round(data_tx_rate, 2),
             "tx_efficiency_percent": round(tx_efficiency, 2)
         }
-    
