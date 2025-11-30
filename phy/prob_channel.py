@@ -30,7 +30,7 @@ class ProbChannel(Channel):
         else call the original unicast_put method
         """
         if self.drop_packet():
-            logger.info(f"[CHANNEL] Unicast packet to drone {dst_id} LOST (p={self.loss_prob})")
+            #logger.info(f"[CHANNEL] Unicast packet to drone {dst_id} LOST (p={self.loss_prob})")
             return
         super().unicast_put(value, dst_id)
         
