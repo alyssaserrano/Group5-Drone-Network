@@ -501,12 +501,15 @@ class SimulationVisualizer:
         button_ax = plt.axes([0.45, 0.01, 0.1, 0.03])
         goto_button = Button(button_ax, 'Go')
         
-        #Start and Pause Buttons
+        #Start, Pause, Reset Buttons
         ############
         play_ax = plt.axes([0.60, 0.01, 0.08, 0.03])
         pause_ax = plt.axes([0.71, 0.01, 0.08, 0.03])
+        reset_ax = plt.axes([0.82, 0.01, 0.08, 0.03])
+        
         play_button = Button(play_ax, 'Start')
         pause_button = Button(pause_ax, 'Pause')
+        reset_button = Button(reset_ax, 'Reset')
         ############
         
         def update_plot(current_time):
@@ -615,6 +618,16 @@ class SimulationVisualizer:
         def on_pause(event):
             self.is_playing = False
         
+        def on_reset(event):
+            # Stop playback
+            self.is_playing = False
+
+            # Reset frame index
+            self.current_frame_index = 0
+
+            # Reset slider to the very first time (this triggers the plot update automatically)
+            first_time_us = frame_times_us[0]
+            time_slider.set_val(first_time_us)
         ######################
         
         # Connect the update function to the slider
@@ -626,6 +639,7 @@ class SimulationVisualizer:
         ##################### Buttons
         play_button.on_clicked(on_play)
         pause_button.on_clicked(on_pause)
+        reset_button.on_clicked(on_reset)
         ##################### Buttons
         
         # Initial plot
