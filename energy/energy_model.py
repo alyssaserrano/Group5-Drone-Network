@@ -84,7 +84,8 @@ class EnergyModel:
         plt.grid()
         plt.show()
 
-
-# if __name__ == "__main__":
-#     em = EnergyModel()
-#     em.test()
+######
+if __name__ == "__main__":
+     em = EnergyModel()
+     em.test()
+##########

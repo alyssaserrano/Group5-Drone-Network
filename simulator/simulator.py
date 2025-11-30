@@ -1,7 +1,8 @@
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-from phy.channel import Channel
+from phy.channel_create import create_channel
+from phy.tech_profiles import wifi_direct
 from entities.drone import Drone
 from entities.obstacle import SphericalObstacle, CubeObstacle
 from simulator.metrics import Metrics
@@ -44,10 +45,12 @@ class Simulator:
 
         self.n_drones = n_drones  # total number of drones in the simulation
         self.channel_states = channel_states
-        self.channel = Channel(self.env)
+        # self.channel = Channel(self.env)
+        self.channel = create_channel(env, wifi_direct)  # using ProbChannel by default
 
         self.metrics = Metrics(self)  # use to record the network performance
 
+        
         # NOTE: if distributed optimization is adopted, remember to comment this to speed up simulation
         # self.central_controller = CentralController(self)
 
@@ -73,7 +76,6 @@ class Simulator:
             self.drones.append(drone)
 
         # scatter_plot_with_spherical_obstacles(self)
-        scatter_plot(self)
 
         self.env.process(self.show_performance())
         self.env.process(self.show_time())
@@ -89,5 +91,7 @@ class Simulator:
         yield self.env.timeout(self.total_simulation_time - 1)
 
         scatter_plot(self)
+        
+        
 
         self.metrics.print_metrics()
