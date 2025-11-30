@@ -1,0 +1,27 @@
+add_neighbors n2 to n1
+add_neighbors n2 to n3
+add_neighbors n1 to n2
+add_neighbors n3 to n2
+add_neighbors n4 to n1
+add_neighbors n1 to n4
+add_neighbors n5 to n4
+add_neighbors n4 to n5
+add_neighbors n3 to n5
+add_neighbors n5 to n3
+show_route n1
+show_route n2
+show_route n3
+show_route n4
+show_route n5
+send_message n1 to n3 hey@how@have@you@been?!
+show_messages n3
+show_log n1
+show_log n2
+show_log n3
+show_log n4
+show_log n5
+show_route n1
+show_route n2
+show_route n3
+show_route n4
+show_route n5

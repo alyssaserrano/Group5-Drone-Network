@@ -7,4 +7,4 @@ __pycache__
 *.pywz
 *.log
 *.gif
-.vscode/
+.vscode//UAV_venv/

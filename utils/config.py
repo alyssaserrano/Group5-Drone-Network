@@ -70,6 +70,9 @@ GL_ID_HELLO_PACKET = 10000
 GL_ID_ACK_PACKET = 20000
 GL_ID_VF_PACKET = 30000
 GL_ID_GRAD_MESSAGE = 40000
+############################################
+GL_ID_TC_PACKET = 0  # Global ID counter for OLSR Topology Control packets
+############################################
 
 # ------------------ physical layer parameters ------------------- #
 BIT_RATE = IEEE_802_11['bit_rate']
