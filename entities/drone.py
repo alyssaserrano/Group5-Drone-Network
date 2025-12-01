@@ -75,6 +75,10 @@ class Drone:
         self.identifier = node_id
         self.coords = coords
         self.start_coords = coords
+        
+        ####
+        self.target_coords = coords
+        ####
 
         self.rng_drone = random.Random(self.identifier + self.simulator.seed)
 
@@ -127,6 +131,9 @@ class Drone:
         self.env.process(self.generate_data_packet())
         self.env.process(self.feed_packet())
         self.env.process(self.receive())
+        ###
+        self.env.process(self.move_toward_target())
+        ###
 
     def generate_data_packet(self, traffic_pattern='Poisson'):
         """
@@ -457,3 +464,45 @@ class Drone:
                 pass
 
         return flag, all_drones_send_to_me, time_span, potential_packet
+    
+#######################Ensures movement logic calls move_toward_target()
+    def set_target(self, coords):
+        """Set a new target coordinate for formation movement."""
+        self.target_coords = coords
+        
+    def move_toward_target(self):
+        """Gradually move drone toward its target coordinates."""
+        while True:
+            yield self.env.timeout(50000)  # move every 0.05s
+
+            if self.sleep:
+                continue
+
+            tx, ty, tz = self.target_coords
+            x, y, z = self.coords
+
+            # Compute direction vector
+            dx = tx - x
+            dy = ty - y
+            dz = tz - z
+
+            dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+
+            if dist < 1:
+                continue  # Already near target
+
+            # Normalize direction
+            ux = dx / dist
+            uy = dy / dist
+            uz = dz / dist
+
+            # Move with drone speed
+            step = self.speed * 0.05  # speed * dt
+
+            # Update coordinates
+            self.coords = [
+                x + ux * step,
+                y + uy * step,
+                z + uz * step
+            ]
+######################

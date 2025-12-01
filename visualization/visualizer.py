@@ -501,7 +501,7 @@ class SimulationVisualizer:
         button_ax = plt.axes([0.45, 0.01, 0.1, 0.03])
         goto_button = Button(button_ax, 'Go')
         
-        #Start, Pause, Reset Buttons
+        #Start, Pause, Reset, Buttons
         ############
         play_ax = plt.axes([0.60, 0.01, 0.08, 0.03])
         pause_ax = plt.axes([0.71, 0.01, 0.08, 0.03])
@@ -511,6 +511,45 @@ class SimulationVisualizer:
         pause_button = Button(pause_ax, 'Pause')
         reset_button = Button(reset_ax, 'Reset')
         ############
+        
+        ########### Formation Buttons
+        def on_original(event):
+            self.simulator.trigger_formation("original")
+            
+        def on_v_form(event):
+            self.simulator.trigger_formation("v")
+
+        def on_line_form(event):
+            self.simulator.trigger_formation("line")
+        
+        #Create Buttons
+        orig_ax = plt.axes([0.05, 0.20, 0.12, 0.045])
+        vform_ax = plt.axes([0.05, 0.14, 0.12, 0.045])
+        line_ax = plt.axes([0.05, 0.08, 0.12, 0.045])
+        
+        orig_button = Button(orig_ax, 'Original')
+        vform_button = Button(vform_ax, 'V Form')
+        line_button = Button(line_ax, 'Line Form')
+        
+        orig_button.on_clicked(on_original)
+        vform_button.on_clicked(on_v_form)
+        line_button.on_clicked(on_line_form)
+        ############
+        
+        def on_original(event):
+            self.simulator.apply_original_formation()
+
+        def on_v(event):
+            self.simulator.apply_v_formation()
+
+        def on_line(event):
+            self.simulator.apply_line_formation()
+            
+        orig_button.on_clicked(on_original)
+        vform_button.on_clicked(on_v)
+        line_button.on_clicked(on_line)
+        ###########
+        
         
         def update_plot(current_time):
             # Clear existing content on axes
@@ -630,10 +669,10 @@ class SimulationVisualizer:
             time_slider.set_val(first_time_us)
             
         #Nx Speed Controls
-        speed1_ax = plt.axes([0.05, 0.12, 0.08, 0.04])
-        speed2_ax = plt.axes([0.15, 0.12, 0.08, 0.04])
-        speed4_ax = plt.axes([0.25, 0.12, 0.08, 0.04])
-        speed8_ax = plt.axes([0.35, 0.12, 0.08, 0.04])
+        speed1_ax = plt.axes([0.30, 0.13, 0.08, 0.05])
+        speed2_ax = plt.axes([0.40, 0.13, 0.08, 0.05])
+        speed4_ax = plt.axes([0.50, 0.13, 0.08, 0.05])
+        speed8_ax = plt.axes([0.60, 0.13, 0.08, 0.05])
         
         speed1_btn = Button(speed1_ax, "1x")
         speed2_btn = Button(speed2_ax, "2x")

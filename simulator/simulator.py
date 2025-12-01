@@ -148,3 +148,56 @@ class Simulator:
         return float(np.mean(energies))
     
 ############################
+
+
+#Formation Change
+############################
+    def trigger_formation(self, mode):
+        """Dispatcher that routes button clicks to the right formation."""
+        if mode == "original":
+            self.apply_original_formation()
+        elif mode == "v":
+            self.apply_v_formation()
+        elif mode == "line":
+            self.apply_line_formation()
+        else:
+            print("Unknown formation:", mode)
+
+    def apply_original_formation(self):
+        """Send all drones back to their original start positions."""
+        for drone in self.drones:
+            drone.set_target(drone.start_coords)
+        print("\n--- Formation Set: ORIGINAL POSITIONS ---")
+        
+    def apply_v_formation(self):
+        """Arrange drones into a V formation."""
+        center_x = np.mean([d.coords[0] for d in self.drones])
+        center_y = np.mean([d.coords[1] for d in self.drones])
+        altitude = 50
+        spacing = 25
+        mid = len(self.drones) // 2
+        
+        for i, drone in enumerate(self.drones):
+            offset = i - mid
+            target = [
+                center_x + abs(offset) * spacing,
+                center_y + offset * spacing,
+                altitude
+            ]
+            drone.set_target(target)
+            
+        print("\n--- Formation Set: V FORMATION ---")
+        
+    def apply_line_formation(self):
+        """Arrange drones into a horizontal line."""
+        n = len(self.drones)
+        spacing = config.MAP_LENGTH / (n + 1)
+        y = config.MAP_WIDTH / 2
+        z = 50
+
+        for i, drone in enumerate(self.drones):
+            x = spacing * (i + 1)
+            drone.set_target([x, y, z])
+
+        print("\n--- Formation Set: LINE FORMATION ---")
+############################
