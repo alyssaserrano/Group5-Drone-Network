@@ -11,7 +11,7 @@ class AodvHelloPacket(Packet):
 class RREQPacket(Packet):
     def __init__(self, origin, rreq_id, dst_id, dst_seq_req, hop_count, path, creation_time, packet_id, simulator, channel_id):
         # small control payload length (use HELLO size as baseline)
-        super().__init__(packet_id, config.HELLO_PACKET_LENGTH, creation_time, simulator, channel_id)
+        super().__init__(packet_id, config.RREQ_PACKET_LENGTH, creation_time, simulator, channel_id)
         self.origin = origin
         self.rreq_id = rreq_id
         self.dst = dst_id
@@ -23,7 +23,7 @@ class RREQPacket(Packet):
 
 class RREPPacket(Packet):
     def __init__(self, rep_src, origin, rep_dst_seq, rep_hops, rep_path, creation_time, packet_id, simulator, channel_id):
-        super().__init__(packet_id, config.HELLO_PACKET_LENGTH, creation_time, simulator, channel_id)
+        super().__init__(packet_id, config.RREP_PACKET_LENGTH, creation_time, simulator, channel_id)
         self.rep_src = rep_src
         self.origin = origin
         self.rep_dst_seq = rep_dst_seq
