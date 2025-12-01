@@ -38,8 +38,8 @@ class SimulationVisualizer:
     """
     Visualize UAV network simulation process, including movement trajectories and communication status
     """
-    
-    def __init__(self, simulator, output_dir="vis_results", vis_frame_interval=50000):
+    ###############################################################vis_frame_interval=50000 Original
+    def __init__(self, simulator, output_dir="vis_results", vis_frame_interval=500000):
         """
         Initialize visualizer
         
@@ -311,7 +311,7 @@ class SimulationVisualizer:
                 
                 # Save the figure to a BytesIO buffer
                 buf = io.BytesIO()
-                plt.savefig(buf, format='png', dpi=100)
+                plt.savefig(buf, format='png', dpi=60) #Original 100
                 plt.close(fig)
                 
                 # Reset buffer position and open image
@@ -442,7 +442,7 @@ class SimulationVisualizer:
         print("Finalizing visualization...")
         
         # Create animation
-        self.create_animations()
+        # self.create_animations() Disabled for speed
         
         # Create interactive visualization
         self.create_interactive_visualization()
@@ -688,54 +688,155 @@ class SimulationVisualizer:
                      path_effects=[path_effects.withStroke(linewidth=2, foreground='black')],
                      zorder=100)  # Ensure text is displayed on top layer
 
-    def _draw_data_links(self, ax, data_comms, drone_positions):
-        """Draw DATA packet links on the given axis with smaller packet ID boxes"""
-        for src_id, dst_id, packet_id, _, _ in data_comms:
-            if src_id in drone_positions and dst_id in drone_positions:
-                start_pos = drone_positions[src_id]
-                end_pos = drone_positions[dst_id]
+########Original _draw_data_links
+    #def _draw_data_links(self, ax, data_comms, drone_positions):
+    #    """Draw DATA packet links on the given axis with smaller packet ID boxes"""
+    #    for src_id, dst_id, packet_id, _, _ in data_comms:
+    #        if src_id in drone_positions and dst_id in drone_positions:
+    #            start_pos = drone_positions[src_id]
+    #            end_pos = drone_positions[dst_id]
                 
                 # Draw an arrow for DATA packet
-                arrow = Arrow3D([start_pos[0], end_pos[0]], 
-                              [start_pos[1], end_pos[1]], 
-                              [start_pos[2], end_pos[2]],
-                              mutation_scale=15, 
-                              lw=2, 
-                              arrowstyle="-|>", 
-                              color=self.comm_colors["DATA"])
+    #            arrow = Arrow3D([start_pos[0], end_pos[0]], 
+    #                          [start_pos[1], end_pos[1]], 
+    #                          [start_pos[2], end_pos[2]],
+    #                          mutation_scale=15, 
+    #                          lw=2, 
+    #                          arrowstyle="-|>", 
+    #                          color=self.comm_colors["DATA"])
                 
-                ax.add_artist(arrow)
+    #            ax.add_artist(arrow)
                 
                 # Add more visible packet ID at midpoint
-                mid_x, mid_y, mid_z = [(start_pos[i] + end_pos[i]) / 2 for i in range(3)]
+    #            mid_x, mid_y, mid_z = [(start_pos[i] + end_pos[i]) / 2 for i in range(3)]
                 
                 # Draw a smaller, more compact background for the packet ID
-                ax.text(mid_x, mid_y, mid_z, str(packet_id), 
-                      ha='center', va='center', fontsize=7, fontweight='bold',
-                      bbox=dict(boxstyle="round,pad=0.2", facecolor='lightblue', 
-                                alpha=0.8, edgecolor=self.comm_colors["DATA"], linewidth=1.5),
-                      zorder=99)  # Display above other elements but below drone IDs
+    #            ax.text(mid_x, mid_y, mid_z, str(packet_id), 
+    #                  ha='center', va='center', fontsize=7, fontweight='bold',
+    #                  bbox=dict(boxstyle="round,pad=0.2", facecolor='lightblue', 
+    #                            alpha=0.8, edgecolor=self.comm_colors["DATA"], linewidth=1.5),
+    #                  zorder=99)  # Display above other elements but below drone IDs
+##############################################################
+
+    def _draw_data_links(self, ax, data_comms, drone_positions):
+        """Draw DATA packet links colored by SINR."""
+        from phy.large_scale_fading import sinr_calculator
+
+        for src_id, dst_id, packet_id, _, _ in data_comms:
+            if src_id in drone_positions and dst_id in drone_positions:
+
+                # Get SINR for this link
+                receiver = self.simulator.drones[dst_id]
+                main_list = [[src_id, 0]]  # (tx_id, channel_id placeholder)
+            
+                # Build interference list from latest transmitting events
+                interference = [[e[0], 0] for e in data_comms if e[0] != src_id]
+            
+                sinr_list = sinr_calculator(receiver, main_list, interference)
+                sinr = sinr_list[0] if sinr_list else 0
+
+                color = self._map_sinr_to_color(sinr)
+
+                start_pos = drone_positions[src_id]
+                end_pos = drone_positions[dst_id]
+
+                arrow = Arrow3D(
+                    [start_pos[0], end_pos[0]],
+                    [start_pos[1], end_pos[1]],
+                    [start_pos[2], end_pos[2]],
+                    mutation_scale=15,
+                    lw=2,
+                    arrowstyle="-|>",
+                    color=color
+                )
+                ax.add_artist(arrow)
+
+                # Label SINR above packet ID
+                mid_x = (start_pos[0] + end_pos[0]) / 2
+                mid_y = (start_pos[1] + end_pos[1]) / 2
+                mid_z = (start_pos[2] + end_pos[2]) / 2
+
+                ax.text(
+                    mid_x, mid_y, mid_z,
+                    f"{packet_id}\n{sinr:.1f} dB",
+                    ha='center', va='center', fontsize=7,
+                    bbox=dict(boxstyle="round,pad=0.2", facecolor='white', alpha=0.8)
+                )
+
+
+####################Original _draw_ack_links
+    #def _draw_ack_links(self, ax, ack_comms, drone_positions):
+    #    """Draw ACK packet links on the given axis with smaller packet ID boxes"""
+    #    for src_id, dst_id, packet_id, _, _ in ack_comms:
+    #        if src_id in drone_positions and dst_id in drone_positions:
+    #            start_pos = drone_positions[src_id]
+    #            end_pos = drone_positions[dst_id]
+                
+                # Draw a straight line for ACK packet
+    #            ax.plot([start_pos[0], end_pos[0]], 
+    #                   [start_pos[1], end_pos[1]], 
+    #                   [start_pos[2], end_pos[2]],
+    #                   color=self.comm_colors["ACK"], 
+    #                   linewidth=2)
+                
+                # Add more visible packet ID at midpoint
+    #            mid_x, mid_y, mid_z = [(start_pos[i] + end_pos[i]) / 2 for i in range(3)]
+                
+                # Draw a smaller, more compact background for the ACK packet ID
+    #            ax.text(mid_x, mid_y, mid_z, str(packet_id), 
+    #                   ha='center', va='center', fontsize=7, fontweight='bold',
+    #                   bbox=dict(boxstyle="round,pad=0.2", facecolor='lightgreen', 
+    #                            alpha=0.8, edgecolor=self.comm_colors["ACK"], linewidth=1.5),
+    #                   zorder=99)  # Display above other elements but below drone IDs
+##############################################
 
     def _draw_ack_links(self, ax, ack_comms, drone_positions):
-        """Draw ACK packet links on the given axis with smaller packet ID boxes"""
+        """Draw ACK links colored by SINR."""
+        from phy.large_scale_fading import sinr_calculator
+        
         for src_id, dst_id, packet_id, _, _ in ack_comms:
             if src_id in drone_positions and dst_id in drone_positions:
+                receiver = self.simulator.drones[dst_id]
+                main_list = [[src_id, 0]]
+                interference = [[e[0], 0] for e in ack_comms if e[0] != src_id]
+                
+                sinr_list = sinr_calculator(receiver, main_list, interference)
+                sinr = sinr_list[0] if sinr_list else 0
+                
+                color = self._map_sinr_to_color(sinr)
+                
                 start_pos = drone_positions[src_id]
                 end_pos = drone_positions[dst_id]
                 
-                # Draw a straight line for ACK packet
-                ax.plot([start_pos[0], end_pos[0]], 
-                       [start_pos[1], end_pos[1]], 
-                       [start_pos[2], end_pos[2]],
-                       color=self.comm_colors["ACK"], 
-                       linewidth=2)
+                ax.plot(
+                    [start_pos[0], end_pos[0]],
+                    [start_pos[1], end_pos[1]],
+                    [start_pos[2], end_pos[2]],
+                    color=color, linewidth=2
+                )
                 
-                # Add more visible packet ID at midpoint
-                mid_x, mid_y, mid_z = [(start_pos[i] + end_pos[i]) / 2 for i in range(3)]
+                mid_x = (start_pos[0] + end_pos[0]) / 2
+                mid_y = (start_pos[1] + end_pos[1]) / 2
+                mid_z = (start_pos[2] + end_pos[2]) / 2
                 
-                # Draw a smaller, more compact background for the ACK packet ID
-                ax.text(mid_x, mid_y, mid_z, str(packet_id), 
-                       ha='center', va='center', fontsize=7, fontweight='bold',
-                       bbox=dict(boxstyle="round,pad=0.2", facecolor='lightgreen', 
-                                alpha=0.8, edgecolor=self.comm_colors["ACK"], linewidth=1.5),
-                       zorder=99)  # Display above other elements but below drone IDs
+                ax.text(
+                    mid_x, mid_y, mid_z,
+                    f"{packet_id}\n{sinr:.1f} dB",
+                    ha='center', va='center', fontsize=7,
+                    bbox=dict(boxstyle="round,pad=0.2", facecolor='white', alpha=0.8)
+                )
+                        
+                
+                
+###################################                
+    def _map_sinr_to_color(self, sinr):
+        """Returns color string based on SINR value (dB)."""
+        if sinr > 20:
+            return "green"
+        elif sinr > 10:
+            return "yellow"
+        elif sinr > 0:
+            return "orange"
+        else:
+            return "red"
+    

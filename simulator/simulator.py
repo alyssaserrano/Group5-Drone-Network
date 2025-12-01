@@ -1,7 +1,7 @@
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-from phy.channel_create import create_channel
+from phy.prob_channel import ProbChannel
 from phy.tech_profiles import wifi_direct
 from entities.drone import Drone
 from entities.obstacle import SphericalObstacle, CubeObstacle
@@ -46,7 +46,7 @@ class Simulator:
         self.n_drones = n_drones  # total number of drones in the simulation
         self.channel_states = channel_states
         # self.channel = Channel(self.env)
-        self.channel = create_channel(env, wifi_direct)  # using ProbChannel by default
+        self.channel = ProbChannel(self.env)  # using ProbChannel by default
 
         self.metrics = Metrics(self)  # use to record the network performance
 
@@ -95,3 +95,56 @@ class Simulator:
         
 
         self.metrics.print_metrics()
+        
+    
+#Metric accessors for visualizer    
+###########################
+    def get_pdr(self):
+        """
+        Packet Delivery Ratio as a fraction in [0, 1].
+        metrics.print_metrics() prints it as a percentage,
+        but for plotting we keep it 0-1 so it matches the panel ylim.
+        """
+        if self.metrics.datapacket_generated_num == 0:
+            return 0.0
+        return len(self.metrics.datapacket_arrived) / self.metrics.datapacket_generated_num
+
+    def get_avg_latency(self):
+        """
+        Average end-to-end latency in milliseconds.
+        Values in deliver_time_dict are in microseconds.
+        """
+        if not self.metrics.deliver_time_dict:
+            return 0.0
+        return float(np.mean(list(self.metrics.deliver_time_dict.values())) / 1e3)
+
+    def get_jitter(self):
+        """
+        Latency jitter = std dev of per-packet delay, in milliseconds.
+        """
+        if len(self.metrics.deliver_time_dict) <= 1:
+            return 0.0
+        delays_ms = np.array(list(self.metrics.deliver_time_dict.values())) / 1e3
+        return float(np.std(delays_ms))
+
+    def get_avg_queue_size(self):
+        """
+        Average size of the transmitting queues across all drones.
+        This uses each drone's transmitting_queue.qsize() at the current time.
+        """
+        if not self.drones:
+            return 0.0
+        sizes = [d.transmitting_queue.qsize() for d in self.drones]
+        return float(np.mean(sizes))
+
+    def get_avg_energy(self):
+        """
+        Average remaining energy across all drones (Joules).
+        If you later want 'energy used', you can normalize against INITIAL_ENERGY.
+        """
+        if not self.drones:
+            return 0.0
+        energies = [d.residual_energy for d in self.drones]
+        return float(np.mean(energies))
+    
+############################

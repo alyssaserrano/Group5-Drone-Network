@@ -1,6 +1,6 @@
 import logging
 from utils import config
-
+from phy.tech_profiles import wifi_direct
 # config logging
 logging.basicConfig(filename='running_log.log',
                     filemode='w',  # there are two modes: 'a' and 'w'
