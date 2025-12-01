@@ -57,13 +57,16 @@ ACK_HEADER_LENGTH = 16 * 8  # header length of ACK packet, 16 byte
 ACK_PACKET_LENGTH = ACK_HEADER_LENGTH + 14 * 8  # bit
 
 HELLO_PACKET_PAYLOAD_LENGTH = 256  # bit
+RREQ_PACKET_PAYLOAD_LENGTH = 512
+RREP_PACKET_PAYLOAD_LENGTH = 384
 HELLO_PACKET_LENGTH = IP_HEADER_LENGTH + MAC_HEADER_LENGTH + PHY_HEADER_LENGTH + HELLO_PACKET_PAYLOAD_LENGTH
-
+RREQ_PACKET_LENGTH  = IP_HEADER_LENGTH + MAC_HEADER_LENGTH + PHY_HEADER_LENGTH + RREQ_PACKET_PAYLOAD_LENGTH
+RREP_PACKET_LENGTH  = IP_HEADER_LENGTH + MAC_HEADER_LENGTH + PHY_HEADER_LENGTH + RREP_PACKET_PAYLOAD_LENGTH
 # define the range of "id" of different types of packets
 """
 |--------------|--------------|--------------|--------------|--------------|--------------|--------------|
-0            10000          20000          30000          40000          50000          60000    
-|   data pkt   |   hello pkt  |    ack pkt   |    vf pkt    |   grad msg   |    RREQ pkt  |   RREP pkt   |
+0            10000          20000          30000          40000          50000          60000          70000
+|   data pkt   |   hello pkt  |    ack pkt   |    vf pkt    |   grad msg   |    RREQ pkt  |   RREP pkt   | 
 """
 GL_ID_DATA_PACKET = 0
 GL_ID_HELLO_PACKET = 10000
