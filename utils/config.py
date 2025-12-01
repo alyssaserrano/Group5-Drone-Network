@@ -26,8 +26,8 @@ AIRCRAFT_WEIGHT = 100  # Newton
 ROTOR_BLADE_TIP_SPEED = 500
 MEAN_ROTOR_VELOCITY = 7.2  # mean rotor induced velocity in hover
 FUSELAGE_DRAG_RATIO = 0.3
-INITIAL_ENERGY = 20 * 1e3  # in joule
-ENERGY_THRESHOLD = 2000  # in joule
+INITIAL_ENERGY = 200 * 1e3  # in joule (Changed from 20 to 200) The flight energy model + TX energy model = too high for only 20 kj
+ENERGY_THRESHOLD = 20 * 1e3  # in joule (Changed from 2000 to 1e3)
 MAX_QUEUE_SIZE = 200  # maximum size of drone's queue
 
 # ----------------------- radio parameters ----------------------- #

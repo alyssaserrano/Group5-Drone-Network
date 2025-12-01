@@ -47,8 +47,10 @@ class EnergyModel:
         self.v0 = config.MEAN_ROTOR_VELOCITY
         self.d0 = config.FUSELAGE_DRAG_RATIO
 
-        self.my_drone.simulator.env.process(self.energy_monitor())
-
+        #self.my_drone.simulator.env.process(self.energy_monitor()) #Original
+        ###
+        self.my_drone.simulator.env.process(self.energy_update_loop())
+        ###
     def power_consumption(self, speed):
         p0 = (self.delta / 8) * self.rho * self.s * self.a * (self.omega ** 3) * (self.r ** 3)
         pi = (1 + self.k) * (self.w ** 1.5) / (math.sqrt(2 * self.rho * self.a))
@@ -59,15 +61,17 @@ class EnergyModel:
         p = blade_profile + induced + parasite
         return p
 
-    def energy_monitor(self):
-        """Monitoring energy consumption of drone under a certain energy model"""
+################# Original energy_monitor
+    #def energy_monitor(self):
+    #    """Monitoring energy consumption of drone under a certain energy model"""
 
-        while True:
-            yield self.my_drone.simulator.env.timeout(1 * 1e5)  # report residual energy every 0.1s
-            if self.my_drone.residual_energy <= config.ENERGY_THRESHOLD:
-                self.my_drone.sleep = True
+    #    while True:
+    #        yield self.my_drone.simulator.env.timeout(1 * 1e5)  # report residual energy every 0.1s
+    #        if self.my_drone.residual_energy <= config.ENERGY_THRESHOLD:
+    #            self.my_drone.sleep = True
                 # print('UAV: ', self.identifier, ' run out of energy at: ', self.env.now)
-
+############################
+  
     def test(self):
         total_power = []
 
@@ -83,6 +87,39 @@ class EnergyModel:
         plt.ylabel('Required power (W)')
         plt.grid()
         plt.show()
+
+
+#######################
+    def energy_update_loop(self):
+        """
+        Continuously subtract energy based on flight power consumption.
+        Runs every 0.1 seconds of simulation time.
+        """
+        while True:
+            # Wait 0.1 sec (100ms) in simulation time
+            yield self.my_drone.simulator.env.timeout(0.1 * 1e6)
+            
+            # Get current speed magnitude
+            vx, vy, vz = self.my_drone.velocity
+            speed = math.sqrt(vx*vx + vy*vy + vz*vz)
+            
+            # Compute required power (Watts = Joules per second)
+            power = self.power_consumption(speed)
+
+            # Energy used in this interval
+            dt = 0.1              # seconds
+            energy_used = power * dt # Joules
+
+            # Subtract from drone energy
+            self.my_drone.residual_energy -= energy_used
+            
+            # Prevent going negative
+            if self.my_drone.residual_energy < 0:
+                self.my_drone.residual_energy = 0
+                self.my_drone.sleep = True
+                break
+#######################
+
 
 ######
 if __name__ == "__main__":

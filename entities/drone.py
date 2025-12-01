@@ -101,6 +101,10 @@ class Drone:
         self.mac_process_finish = dict()
         self.mac_process_count = 0
         self.enable_blocking = 1  # enable "stop-and-wait" protocol
+        
+        ###
+        self.residual_energy = config.INITIAL_ENERGY
+        ###
 
         ###################### Added by Networks Group #############################
         # self.routing_protocol = Dsdv(self.simulator, self)

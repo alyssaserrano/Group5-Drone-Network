@@ -628,6 +628,53 @@ class SimulationVisualizer:
             # Reset slider to the very first time (this triggers the plot update automatically)
             first_time_us = frame_times_us[0]
             time_slider.set_val(first_time_us)
+            
+        #Nx Speed Controls
+        speed1_ax = plt.axes([0.05, 0.12, 0.08, 0.04])
+        speed2_ax = plt.axes([0.15, 0.12, 0.08, 0.04])
+        speed4_ax = plt.axes([0.25, 0.12, 0.08, 0.04])
+        speed8_ax = plt.axes([0.35, 0.12, 0.08, 0.04])
+        
+        speed1_btn = Button(speed1_ax, "1x")
+        speed2_btn = Button(speed2_ax, "2x")
+        speed4_btn = Button(speed4_ax, "4x")
+        speed8_btn = Button(speed8_ax, "8x")
+        
+        def set_speed(multiplier):
+            base_interval = 200  # ms, original speed
+            new_interval = max(10, base_interval / multiplier)  # avoid too tiny
+
+            # Safely update timer interval
+            try:
+                self._animation_timer.stop()
+                # Some Matplotlib versions use .interval, others have .set_interval()
+                if hasattr(self._animation_timer, "set_interval"):
+                    self._animation_timer.set_interval(new_interval)
+                else:
+                    self._animation_timer.interval = new_interval
+                self._animation_timer.start()
+                print(f"Playback speed set to {multiplier}× (interval={new_interval} ms)")
+            except Exception as e:
+                print(f"Error changing speed: {e}")
+                
+        def speed1(event):
+            set_speed(1)
+
+        def speed2(event):
+            set_speed(2)
+
+        def speed4(event):
+            set_speed(4)
+
+        def speed8(event):
+            set_speed(8)
+            
+        speed1_btn.on_clicked(speed1)
+        speed2_btn.on_clicked(speed2)
+        speed4_btn.on_clicked(speed4)
+        speed8_btn.on_clicked(speed8)
+        
+        
         ######################
         
         # Connect the update function to the slider
@@ -671,22 +718,55 @@ class SimulationVisualizer:
                     drone_positions[drone_id] = positions[closest_idx]
         return drone_positions
 
-    def _draw_drones(self, ax, drone_positions):
-        """Draw drones on the given axis with embedded ID numbers"""
-        for drone_id, position in drone_positions.items():
-            color = self.colors[drone_id]
+##################### Original Draw_drones
+    #def _draw_drones(self, ax, drone_positions):
+    #    """Draw drones on the given axis with embedded ID numbers"""
+    #    for drone_id, position in drone_positions.items():
+    #        color = self.colors[drone_id]
             
             # Use smaller marker size for drone representation
-            ax.scatter(position[0], position[1], position[2], 
-                    color=color, s=150, alpha=0.7, edgecolors='black')
+    #        ax.scatter(position[0], position[1], position[2], 
+    #                color=color, s=150, alpha=0.7, edgecolors='black')
             
             # Add ID text with outline for better visibility
             # Set high zorder to ensure text appears above other elements
-            text = ax.text(position[0], position[1], position[2], 
-                     f"{drone_id}", ha='center', va='center', 
-                     color='white', fontweight='bold', fontsize=10,
-                     path_effects=[path_effects.withStroke(linewidth=2, foreground='black')],
-                     zorder=100)  # Ensure text is displayed on top layer
+    #        text = ax.text(position[0], position[1], position[2], 
+    #                 f"{drone_id}", ha='center', va='center', 
+    #                 color='white', fontweight='bold', fontsize=10,
+    #                 path_effects=[path_effects.withStroke(linewidth=2, foreground='black')],
+    #                 zorder=100)  # Ensure text is displayed on top layer
+######################################
+
+#New Draw_Drones
+######################
+    def _draw_drones(self, ax, drone_positions):
+        """Draw drones + battery bars."""
+        for drone_id, position in drone_positions.items():
+            color = self.colors[drone_id]
+            
+            # Draw drone icon
+            ax.scatter(
+                position[0], position[1], position[2],
+                color=color, s=150, alpha=0.9, edgecolors='black'
+            )
+            
+            # Draw ID number
+            ax.text(
+                position[0], position[1], position[2],
+                f"{drone_id}",
+                ha='center', va='center',
+                color='white', fontsize=10, fontweight='bold',
+                path_effects=[path_effects.withStroke(linewidth=2, foreground='black')],
+                zorder=100
+            )
+            
+            # NEW: battery bar
+            drone_obj = self.simulator.drones[drone_id]
+            self._draw_battery_bar(
+                ax, drone_obj,
+                position[0], position[1], position[2]
+            )
+######################
 
 ########Original _draw_data_links
     #def _draw_data_links(self, ax, data_comms, drone_positions):
@@ -790,6 +870,7 @@ class SimulationVisualizer:
     #                   zorder=99)  # Display above other elements but below drone IDs
 ##############################################
 
+############################################## Sinr Link
     def _draw_ack_links(self, ax, ack_comms, drone_positions):
         """Draw ACK links colored by SINR."""
         from phy.large_scale_fading import sinr_calculator
@@ -825,7 +906,7 @@ class SimulationVisualizer:
                     ha='center', va='center', fontsize=7,
                     bbox=dict(boxstyle="round,pad=0.2", facecolor='white', alpha=0.8)
                 )
-                        
+#################################################                        
                 
                 
 ###################################                
@@ -839,4 +920,78 @@ class SimulationVisualizer:
             return "orange"
         else:
             return "red"
+###################################   
+
+# Battery Bars Above Each UAV
+###################################
+    def _energy_to_color(self, pct):
+        """Return color based on remaining battery percentage."""
+        if pct > 66:
+            return "green"
+        elif pct > 33:
+            return "yellow"
+        else:
+            return "red"
     
+    def _draw_battery_bar(self, ax, drone, x, y, z):
+        """
+        Draw a floating battery bar above the drone's position. Treat ENERGY_THRESHOLD as 0% and INITIAL_ENERGY as %100
+        """
+        # --- Determine actual energy ---
+        actual_energy = getattr(drone, "energy",
+                            getattr(drone, "residual_energy",
+                            getattr(drone, "remaining_energy",
+                            getattr(drone, "battery_energy", None))))
+        
+        if actual_energy is None:
+            actual_energy = 0
+            
+        
+        usable_energy = max(actual_energy - config.ENERGY_THRESHOLD, 0)
+        total_usable = max(config.INITIAL_ENERGY - config.ENERGY_THRESHOLD, 1)
+        
+        # Remaining energy %
+        pct = (usable_energy / total_usable) * 100.0
+        pct = max(0, min(pct, 100))
+        pct_color = self._energy_to_color(pct)
+        
+        # Bar size
+        bar_width = 4
+        bar_height = 1
+        offset_z = 5  # height above drone
+        
+        # Rectangle corners
+        x0 = x - bar_width / 2
+        y0 = y
+        z0 = z + offset_z
+        
+        # Draw bar outline (white)
+        ax.plot(
+            [x0, x0 + bar_width, x0 + bar_width, x0, x0],
+            [y0, y0, y0, y0, y0],
+            [z0, z0, z0 + bar_height, z0 + bar_height, z0],
+            color="black",
+            linewidth=1
+        )
+        
+        # Filled portion (remaining battery)
+        filled_width = bar_width * (pct / 100)
+        
+        ax.plot(
+            [x0, x0 + filled_width, x0 + filled_width, x0, x0],
+            [y0, y0, y0, y0, y0],
+            [z0, z0, z0 + bar_height, z0 + bar_height, z0],
+            color=pct_color,
+            linewidth=4
+        )
+        
+        # Text label
+        ax.text(
+            x, y, z0 + 2,
+            f"{pct:.0f}%",
+            ha="center", va="center",
+            fontsize=7, fontweight="bold",
+            color="white",
+            bbox=dict(facecolor="black", alpha=0.6, boxstyle="round,pad=0.2")
+        )
+#########################       
