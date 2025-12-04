@@ -1,13 +1,8 @@
+
 import simpy
 from utils import config
 from simulator.simulator import Simulator
 from visualization.visualizer import SimulationVisualizer
-
-# Physical Layer 
-from phy.tech_profiles import wifi_11n
-from phy.tech_profiles import wifi_11ac
-from phy.tech_profiles import wifi_direct
-from phy.channel_create import create_channel
 
 """
   _   _                   _   _          _     ____    _             
@@ -35,6 +30,10 @@ if __name__ == "__main__":
     # Debug: Print final energy levels of all drones
     for drone in sim.drones:
         print(f"Drone {drone.identifier} final energy: {drone.residual_energy}")
+    
+    print("Simulation finished — showing figures...")
+    import matplotlib.pyplot as plt
+    plt.show()
     
     # Finalize visualization
     visualizer.finalize()

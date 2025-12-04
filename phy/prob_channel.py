@@ -1,6 +1,8 @@
 import random
+import numpy as np
 from phy.channel import Channel
 from simulator.log import logger
+
 
 
 class ProbChannel(Channel):
@@ -34,25 +36,65 @@ class ProbChannel(Channel):
             return
         super().unicast_put(value, dst_id)
         
-    def broadcast_put(self, value):
-        """
-        same here just loops through all drones (broadcast)
+        ####### Added simple range check 12/3/25
+        sender = value[2]
+        receiver = dst_id
+        dr1 = self.simulator.drones[sender]
+        dr2 = self.simulator.drones[receiver]
+
+        dist = np.linalg.norm(np.array(dr1.coords) - np.array(dr2.coords))
+
+        if dist > 200:   # or dynamic based on TX power
+            return
+        ########
+    
+    ##########Original    
+    #def broadcast_put(self, value):
+    #    """
+    #    same here just loops through all drones (broadcast)
         
+    #    """
+    #    dst_id_list = list(self.pipes.keys())
+    #    super().multicast_put(value, dst_id_list)
+    ########
+    
+    ######## NEW 12/2/25
+    def broadcast_put(self, message):
         """
-        dst_id_list = list(self.pipes.keys())
-        super().multicast_put(value, dst_id_list)
-        
+        Proper broadcast: send full PHY message to all drones.
+        """
+        for dst_id in self.pipes.keys():
+            if not self.drop_packet():
+                self.pipes[dst_id].append(message.copy())
+            else:
+                # Optional: print loss log
+                pass
+    ###########
             
-    def multicast_put(self, value, dst_id_list):
+    ############### ORIGINAL
+    #def multicast_put(self, value, dst_id_list):
+    #    """
+    #    same here just loops through specific group of drones (multicast)
+    #    """
+    #    for dst_id in dst_id_list:
+    #        if self.drop_packet():
+    #            logger.info(f"[CHANNEL] Multicast packet to drone {dst_id} LOST (p={self.loss_prob})")
+    #            dst_id_list.remove(dst_id)
+        
+    #    super().multicast_put(value, dst_id_list)
+    ###############################################
+    
+    ############### NEW MULTICAST
+    def multicast_put(self, message, dst_id_list):
         """
-        same here just loops through specific group of drones (multicast)
+        Proper multicast: duplicate the packet for each destination.
         """
         for dst_id in dst_id_list:
-            if self.drop_packet():
-                logger.info(f"[CHANNEL] Multicast packet to drone {dst_id} LOST (p={self.loss_prob})")
-                dst_id_list.remove(dst_id)
-        
-        super().multicast_put(value, dst_id_list)
+            if not self.drop_packet():
+                self.pipes[dst_id].append(message.copy())
+    ######################
+    
+    
             
 # testing if code above works standalone before connecting to rest of simulator    
 

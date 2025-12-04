@@ -1,9 +1,6 @@
 import logging
 from utils import config
-from .tech_profiles import wifi_11n  # Import tech_profiles.py file that has our wifi objects.
-from .tech_profiles import wifi_11ac
-from .tech_profiles import wifi_direct
-
+from phy.tech_profiles import wifi_direct
 # config logging
 logging.basicConfig(filename='running_log.log',
                     filemode='w',  # there are two modes: 'a' and 'w'
@@ -97,9 +94,6 @@ class Phy:
             packet: the data packet or ACK packet that needs to be transmitted
             next_hop_id: the identifier of the next hop drone
         """
-
-        # Debug
-        #print(f"[PHY TX] drone {self.my_drone.identifier} unicast using profile '{self.profile.name}' | profile_TX_mW={self.profile.energy_model.get('TX','N/A')} | config_TX={config.TRANSMITTING_POWER}")
 
         # Calculate transmission duration
         tx_duration_s = packet.packet_length / self.profile.bit_rate

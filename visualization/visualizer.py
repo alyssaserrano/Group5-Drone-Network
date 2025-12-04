@@ -10,6 +10,10 @@ from utils import config
 import io
 import matplotlib.patheffects as path_effects
 
+######
+import csv
+#####
+
 # Add 3D arrow class definition that handles arrows in 3D view
 class Arrow3D(FancyArrowPatch):
     """
@@ -34,8 +38,8 @@ class SimulationVisualizer:
     """
     Visualize UAV network simulation process, including movement trajectories and communication status
     """
-    
-    def __init__(self, simulator, output_dir="vis_results", vis_frame_interval=50000):
+    ###############################################################vis_frame_interval=50000 Original
+    def __init__(self, simulator, output_dir="vis_results", vis_frame_interval=500000):
         """
         Initialize visualizer
         
@@ -67,47 +71,208 @@ class SimulationVisualizer:
         self.comm_colors = {
             "DATA": "blue",
             "ACK": "green",
-            "HELLO": "orange"
+            "HELLO": "orange",
+            "TC": "magenta",
         }
         
         # Setup communication tracking
         self._setup_communication_tracking()
         
+        
+        ####################################
         # Reference for interactive elements
         self.interactive_fig = None
         self.interactive_slider = None
         self.frame_times = []
+        ####################################
+        
+        ##################
+        self.is_playing = False
+        self.current_frame_index = 0
+        self._animation_timer = None
+        ##################
+        
+        #Metrics time-series for panels
+        #####################################
+        self.metric_times = []      # seconds
+        self.pdr_series = []        # packet delivery ratio
+        self.latency_series = []    # average latency
+        self.jitter_series = []     # latency jitter
+        self.queue_series = []      # e.g., average queue length
+        self.energy_series = []     # e.g., average remaining energy
+        #####################################
     
-    def _setup_communication_tracking(self):
-        """Setup tracking for communication events"""
+    ################### ORIGINAL
+    #def _setup_communication_tracking(self):
+    #    """Setup tracking for communication events"""
         # Save the original unicast_put method
-        original_unicast_put = self.simulator.channel.unicast_put
+    #    original_unicast_put = self.simulator.channel.unicast_put
         
         # Rewrite unicast_put method to track communications
-        def tracked_unicast_put(message, dst_drone_id):
+    #    def tracked_unicast_put(message, dst_drone_id):
             # Call the original method
-            result = original_unicast_put(message, dst_drone_id)
+    #        result = original_unicast_put(message, dst_drone_id)
             
             # Record communication event
-            packet, _, src_drone_id, _, _ = message
+    #        packet, _, src_drone_id, _, _ = message
             
             # Add packet type differentiation
-            packet_id = packet.packet_id
+    #        packet_id = packet.packet_id
             
             # Identify packet type based on ID range
-            if packet_id >= 20000:
-                packet_type = "ACK"
-            elif packet_id >= 10000:
-                packet_type = "HELLO"
-            else:
-                packet_type = "DATA"
+    #        if packet_id >= 20000:
+    #            packet_type = "ACK"
+    #        elif packet_id >= 10000:
+    #            packet_type = "HELLO"
+    #        else:
+    #            packet_type = "DATA"
             
-            self.track_communication(src_drone_id, dst_drone_id, packet_id, packet_type)
+    #        self.track_communication(src_drone_id, dst_drone_id, packet_id, packet_type)
             
-            return result
+    #        return result
         
         # Replace the method
-        self.simulator.channel.unicast_put = tracked_unicast_put
+    #    self.simulator.channel.unicast_put = tracked_unicast_put
+    ######################################
+    
+    ##### NEW
+    def _setup_communication_tracking(self):
+        """Hook channel methods so we can track DATA / ACK / HELLO / TC."""
+        ch = self.simulator.channel
+
+        # Save originals (could be ProbChannel methods)
+        original_unicast   = getattr(ch, "unicast_put", None)
+        original_broadcast = getattr(ch, "broadcast_put", None)
+        original_multicast = getattr(ch, "multicast_put", None)
+
+        # ---------- helper: classify packet type ----------
+        def classify_packet(packet):
+            """
+            Try to infer logical type from packet fields first.
+            Fall back to ID-based ranges.
+            """
+            # Prefer explicit packet type fields if they exist
+            for attr in ("msg_type", "packet_type", "pkt_type", "type"):
+                if hasattr(packet, attr):
+                    t = str(getattr(packet, attr)).upper()
+                    if t in ("DATA", "ACK", "HELLO", "TC"):
+                        return t
+
+            # Fallback: ID ranges (custom to your sim)
+            pid = getattr(packet, "packet_id", 0)
+            if pid >= 30000:
+                return "TC"
+            elif pid >= 20000:
+                return "ACK"
+            elif pid >= 10000:
+                return "HELLO"
+            else:
+                return "DATA"
+
+        # ---------- wrap unicast ----------
+        if original_unicast is not None:
+
+            def tracked_unicast_put(message, dst_id):
+                # Call real channel logic first
+                result = original_unicast(message, dst_id)
+
+                try:
+                    packet, _, src_drone_id, _, _ = message
+                except Exception:
+                    return result
+
+                packet_id   = getattr(packet, "packet_id", -1)
+                packet_type = classify_packet(packet)
+
+                self.track_communication(src_drone_id, dst_id, packet_id, packet_type)
+                return result
+
+            ch.unicast_put = tracked_unicast_put
+
+        # ---------- wrap broadcast ----------
+        if original_broadcast is not None:
+
+            def tracked_broadcast_put(message):
+                # Let the channel actually deliver
+                result = original_broadcast(message)
+
+                try:
+                    packet, _, src_drone_id, _, _ = message
+                except Exception:
+                    return result
+
+                packet_id   = getattr(packet, "packet_id", -1)
+                packet_type = classify_packet(packet)
+
+                # Log one event per dst for visualization
+                for dst_id in range(self.simulator.n_drones):
+                    if dst_id == src_drone_id:
+                        continue
+                    self.track_communication(src_drone_id, dst_id, packet_id, packet_type)
+
+                return result
+
+            ch.broadcast_put = tracked_broadcast_put
+
+        # ---------- wrap multicast ----------
+        if original_multicast is not None:
+
+            def tracked_multicast_put(message, dst_id_list):
+                result = original_multicast(message, dst_id_list)
+
+                try:
+                    packet, _, src_drone_id, _, _ = message
+                except Exception:
+                    return result
+
+                packet_id   = getattr(packet, "packet_id", -1)
+                packet_type = classify_packet(packet)
+
+                for dst_id in dst_id_list:
+                    if dst_id == src_drone_id:
+                        continue
+                    self.track_communication(src_drone_id, dst_id, packet_id, packet_type)
+
+                return result
+
+            ch.multicast_put = tracked_multicast_put
+    ########
+    
+    ##########################################
+    def track_metrics(self):
+        """
+        Periodically record performance metrics (PDR, latency, jitter,
+        queue sizes, energy) as time series.
+        NOTE: You need to fill in how to get these from your simulator.
+        """
+        current_time = self.simulator.env.now / 1e6  # seconds
+        self.metric_times.append(current_time)
+
+        # ---- TODO: replace these placeholders with real values ----
+        # The idea: ask your simulator for these stats at "now".
+        # For example, if your simulator has something like:
+        #   self.simulator.stats.pdr(),
+        #   self.simulator.stats.avg_latency(), etc.
+        #
+        # For now I'll show dummy calls you can replace.
+
+        # Packet Delivery Ratio (0–1)
+        pdr = getattr(self.simulator, "get_pdr", lambda: 0.0)()
+        # Average latency (ms)
+        avg_latency = getattr(self.simulator, "get_avg_latency", lambda: 0.0)()
+        # Jitter (ms)
+        jitter = getattr(self.simulator, "get_jitter", lambda: 0.0)()
+        # Average queue length
+        avg_queue = getattr(self.simulator, "get_avg_queue_size", lambda: 0.0)()
+        # Average remaining energy (or total used)
+        avg_energy = getattr(self.simulator, "get_avg_energy", lambda: 0.0)()
+
+        self.pdr_series.append(pdr)
+        self.latency_series.append(avg_latency)
+        self.jitter_series.append(jitter)
+        self.queue_series.append(avg_queue)
+        self.energy_series.append(avg_energy)
+    ##########################################
     
     def track_drone_positions(self):
         """
@@ -125,6 +290,7 @@ class SimulationVisualizer:
         Record communication event
         """
         current_time = self.simulator.env.now / 1e6  # Convert to seconds
+        print(f"[COMM] t={current_time:.6f}s src={src_id} dst={dst_id} id={packet_id} type={packet_type}") #NEW sanity check 12/3/25
         # Record complete communication event information
         self.comm_events.append((src_id, dst_id, packet_id, packet_type, current_time))
     
@@ -171,6 +337,8 @@ class SimulationVisualizer:
         # Get only the latest communication events for each src-dst pair
         latest_data_comms = self._get_latest_comms(recent_comms, "DATA")
         latest_ack_comms = self._get_latest_comms(recent_comms, "ACK")
+        latest_hello_comms = self._get_latest_comms(recent_comms, "HELLO") # added packet
+        latest_tc_comms = self._get_latest_comms(recent_comms, "TC") # added packet
         
         # Draw DATA packet links on left subplot
         self._draw_data_links(ax_data, latest_data_comms, drone_positions)
@@ -178,8 +346,44 @@ class SimulationVisualizer:
         # Draw ACK packet links on right subplot
         self._draw_ack_links(ax_ack, latest_ack_comms, drone_positions)
         
+        #####
+        for src_id, dst_id, packetid, _, _ in latest_hello_comms:
+            if src_id in drone_positions and dst_id in drone_positions:
+                s = drone_positions[src_id]
+                d = drone_positions[dst_id]
+                ax_data.plot(
+                    [s[0], d[0]],
+                    [s[1], d[1]],
+                    [s[2], d[2]],
+                    linestyle="--",
+                    linewidth=1.5,
+                    color=self.comm_colors["HELLO"],
+                )
+
+        for src_id, dst_id, packetid, _, _ in latest_tc_comms:
+            if src_id in drone_positions and dst_id in drone_positions:
+                s = drone_positions[src_id]
+                d = drone_positions[dst_id]
+                ax_data.plot(
+                    [s[0], d[0]],
+                    [s[1], d[1]],
+                    [s[2], d[2]],
+                    linestyle=":",
+                    linewidth=1.5,
+                    color=self.comm_colors["TC"],
+                )
+        #####
+        
         # Add legends
+        """###Original code###
         data_legend = [Line2D([0], [0], color=self.comm_colors["DATA"], lw=2, label="DATA Packets")]
+        ax_data.legend(handles=data_legend, loc='upper right')
+        """
+        data_legend = [
+            Line2D([0], [0], color=self.comm_colors["DATA"],  lw=2,   label="DATA"),
+            Line2D([0], [0], color=self.comm_colors["HELLO"], lw=1.5, linestyle="--", label="HELLO"),
+            Line2D([0], [0], color=self.comm_colors["TC"],    lw=1.5, linestyle=":",  label="TC"),
+        ]
         ax_data.legend(handles=data_legend, loc='upper right')
         
         ack_legend = [Line2D([0], [0], color=self.comm_colors["ACK"], lw=2, label="ACK Packets")]
@@ -252,7 +456,7 @@ class SimulationVisualizer:
                 
                 # Save the figure to a BytesIO buffer
                 buf = io.BytesIO()
-                plt.savefig(buf, format='png', dpi=100)
+                plt.savefig(buf, format='png', dpi=60) #Original 100
                 plt.close(fig)
                 
                 # Reset buffer position and open image
@@ -291,6 +495,72 @@ class SimulationVisualizer:
             print(f"Error creating animation: {e}")
             print("Continuing with interactive visualization...")
     
+    ###################################
+    def create_metrics_panels(self):
+        """Create time-series panels for PDR/latency/jitter/queue/energy and export PNG + CSV."""
+        if not self.metric_times:
+            print("No metric data recorded; skipping metrics panels.")
+            return
+
+        print("Creating metrics panels...")
+
+        times = np.array(self.metric_times)
+
+        fig, axes = plt.subplots(5, 1, figsize=(10, 12), sharex=True)
+        fig.suptitle("UAV Network Performance Metrics", fontsize=14)
+
+        # 1) PDR
+        axes[0].plot(times, self.pdr_series)
+        axes[0].set_ylabel("PDR")
+        axes[0].set_ylim(0, 1.05)
+
+        # 2) Latency
+        axes[1].plot(times, self.latency_series)
+        axes[1].set_ylabel("Latency (ms)")
+
+        # 3) Jitter
+        axes[2].plot(times, self.jitter_series)
+        axes[2].set_ylabel("Jitter (ms)")
+
+        # 4) Queue size
+        axes[3].plot(times, self.queue_series)
+        axes[3].set_ylabel("Queue size")
+
+        # 5) Energy
+        axes[4].plot(times, self.energy_series)
+        axes[4].set_ylabel("Energy")
+        axes[4].set_xlabel("Time (s)")
+
+        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+        #Export PNG
+        png_path = os.path.join(self.output_dir, "metrics_panels.png")
+        fig.savefig(png_path, dpi=150)
+        print(f"Metrics panels PNG saved to {png_path}")
+
+        #Export CSV
+        csv_path = os.path.join(self.output_dir, "metrics_timeseries.csv")
+        with open(csv_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                "time_s", "pdr", "avg_latency_ms", "jitter_ms",
+                "avg_queue_size", "avg_energy"
+            ])
+            for i in range(len(times)):
+                writer.writerow([
+                    times[i],
+                    self.pdr_series[i],
+                    self.latency_series[i],
+                    self.jitter_series[i],
+                    self.queue_series[i],
+                    self.energy_series[i],
+                ])
+        print(f"Metrics CSV saved to {csv_path}")
+
+        # Show the figure (optional)
+        plt.show()
+    ###################################
+    
     def run_visualization(self):
         """
         Run visualization process
@@ -302,6 +572,9 @@ class SimulationVisualizer:
         def track_positions():
             while True:
                 self.track_drone_positions()
+                ################### Record metrics at the same interval
+                self.track_metrics()
+                ###################
                 yield self.simulator.env.timeout(tracking_interval_us)
         
         # Register tracking process
@@ -314,10 +587,15 @@ class SimulationVisualizer:
         print("Finalizing visualization...")
         
         # Create animation
-        self.create_animations()
+        # self.create_animations() Disabled for speed
         
         # Create interactive visualization
         self.create_interactive_visualization()
+        
+        # Create metrics dashboard panels + export PNG/CSV
+        ###################################
+        self.create_metrics_panels()
+        ###################################
         
         print("Visualization complete. Output saved to:", self.output_dir)
 
@@ -345,7 +623,7 @@ class SimulationVisualizer:
         
         # Create figure with fixed subplots - this is key to solving the error
         fig = plt.figure(figsize=(15, 7))
-        plt.subplots_adjust(bottom=0.15)  # Make room for controls
+        plt.subplots_adjust(bottom=0.23)  # Make room for controls
         
         # Create the subplots once and keep them
         gs = fig.add_gridspec(1, 2, hspace=0, wspace=0.2)
@@ -365,8 +643,170 @@ class SimulationVisualizer:
         text_ax = plt.axes([0.2, 0.01, 0.2, 0.03])
         time_text = TextBox(text_ax, 'Go to time (μs): ', initial='')
         
+        #Route Overlay Controls
+        route_text_ax = plt.axes([0.80, 0.13, 0.12, 0.04])
+        route_textbox = TextBox(route_text_ax, "Flow (src dst):", initial="")
+
+        route_btn_ax = plt.axes([0.80, 0.08, 0.12, 0.04])
+        route_button = Button(route_btn_ax, "Show Route")
+        
         button_ax = plt.axes([0.45, 0.01, 0.1, 0.03])
         goto_button = Button(button_ax, 'Go')
+        
+        #Start, Pause, Reset, Buttons
+        ############
+        play_ax = plt.axes([0.60, 0.01, 0.08, 0.03])
+        pause_ax = plt.axes([0.71, 0.01, 0.08, 0.03])
+        reset_ax = plt.axes([0.82, 0.01, 0.08, 0.03])
+        
+        play_button = Button(play_ax, 'Start')
+        pause_button = Button(pause_ax, 'Pause')
+        reset_button = Button(reset_ax, 'Reset')
+        ############
+        
+        ########### Formation Buttons
+        def on_original(event):
+            self.simulator.trigger_formation("original")
+            
+        def on_v_form(event):
+            self.simulator.trigger_formation("v")
+
+        def on_line_form(event):
+            self.simulator.trigger_formation("line")
+            
+        
+        
+        
+        #Create Buttons
+        orig_ax = plt.axes([0.05, 0.20, 0.12, 0.045])
+        vform_ax = plt.axes([0.05, 0.14, 0.12, 0.045])
+        line_ax = plt.axes([0.05, 0.08, 0.12, 0.045])
+        
+        orig_button = Button(orig_ax, 'Original')
+        vform_button = Button(vform_ax, 'V Form')
+        line_button = Button(line_ax, 'Line Form')
+        
+        orig_button.on_clicked(on_original)
+        vform_button.on_clicked(on_v_form)
+        line_button.on_clicked(on_line_form)
+        ############
+        
+        def on_original(event):
+            self.simulator.apply_original_formation()
+
+        def on_v(event):
+            self.simulator.apply_v_formation()
+
+        def on_line(event):
+            self.simulator.apply_line_formation()
+            
+        orig_button.on_clicked(on_original)
+        vform_button.on_clicked(on_v)
+        line_button.on_clicked(on_line)
+        ###########
+        
+        
+        #### Route Overlay (OLSR: flow src -> dst)
+        def show_route(event):
+            """
+            Read 'src dst' from the textbox and build a path using
+            OLSR's best_next_hop() at each hop.
+            """
+            try:
+                text = route_textbox.text.strip()
+                if not text:
+                    print("Enter flow as: src dst  (example: 0 3)")
+                    self.selected_route = []
+                    return
+
+                parts = text.split()
+                if len(parts) != 2:
+                    print("Format must be: src dst  (two integers)")
+                    self.selected_route = []
+                    return
+
+                src = int(parts[0])
+                dst = int(parts[1])
+
+                n = len(self.simulator.drones)
+                if not (0 <= src < n and 0 <= dst < n):
+                    print(f"Drone IDs must be between 0 and {n-1}")
+                    self.selected_route = []
+                    return
+
+                if src == dst:
+                    print("Source and destination are the same.")
+                    self.selected_route = [src]
+                    # Redraw just to clear any old overlay
+                    update_plot(time_slider.val / 1e6)
+                    fig.canvas.draw_idle()
+                    return
+
+                path = [src]
+                visited = {src}
+                current = src
+                success = False
+
+                # Walk at most n-1 hops to avoid infinite loops
+                for _ in range(n - 1):
+                    drone = self.simulator.drones[current]
+                    rp = getattr(drone, "routing_protocol", None)
+                    if rp is None:
+                        print(f"Drone {current} has no routing_protocol")
+                        break
+
+                    # OLSR: use its routing table + best_next_hop()
+                    table = getattr(rp, "table", None)
+                    if table is None or not hasattr(table, "best_next_hop"):
+                        print(f"Routing protocol on drone {current} has no OLSR table / best_next_hop")
+                        break
+
+                    # OLSR's next-hop decision for destination dst
+                    next_hop = table.best_next_hop(dst)
+
+                    # Your OLSR next_hop_selection uses the rule:
+                    # has_route = best_next_hop_id != my_drone.identifier
+                    if next_hop == current:
+                        print(f"No route entry at drone {current} for destination {dst}")
+                        break
+
+                    if next_hop in visited:
+                        print("Detected routing loop, aborting.")
+                        break
+
+                    path.append(next_hop)
+                    visited.add(next_hop)
+
+                    if next_hop == dst:
+                        success = True
+                        break
+
+                    current = next_hop
+
+                if not success:
+                    print(f"Could not build full path from {src} to {dst}")
+                    self.selected_route = []
+                    update_plot(time_slider.val / 1e6)
+                    fig.canvas.draw_idle()
+                    return
+
+                # Success
+                self.selected_route = path
+                print(f"[ROUTE] (OLSR) {src} -> {dst} path:", path)
+
+                # Force redraw with overlay
+                update_plot(time_slider.val / 1e6)
+                fig.canvas.draw_idle()
+
+            except ValueError:
+                print("Both src and dst must be integers (example: 0 3).")
+                self.selected_route = []
+
+        route_button.on_clicked(show_route)
+        ####
+        
+        
+        
         
         def update_plot(current_time):
             # Clear existing content on axes
@@ -406,9 +846,74 @@ class SimulationVisualizer:
             latest_data_comms = self._get_latest_comms(recent_comms, "DATA")
             latest_ack_comms = self._get_latest_comms(recent_comms, "ACK")
             
+            # Added hello / TC Packets 12/3/25
+            latest_hello_comms = self._get_latest_comms(recent_comms, "HELLO")
+            latest_tc_comms = self._get_latest_comms(recent_comms, "TC")
+            
             # Draw communication links
             self._draw_data_links(ax_data, latest_data_comms, drone_positions)
             self._draw_ack_links(ax_ack, latest_ack_comms, drone_positions)
+            
+            ############ Added 12/3/25
+            for src_id, dst_id, packetid, _, _ in latest_hello_comms:
+                if src_id in drone_positions and dst_id in drone_positions:
+                    s = drone_positions[src_id]
+                    d = drone_positions[dst_id]
+                    ax_data.plot(
+                        [s[0], d[0]],
+                        [s[1], d[1]],
+                        [s[2], d[2]],
+                        linestyle="--",
+                        linewidth=1.5,
+                        color=self.comm_colors["HELLO"],
+                    )
+
+            for src_id, dst_id, packetid, _, _ in latest_tc_comms:
+                if src_id in drone_positions and dst_id in drone_positions:
+                    s = drone_positions[src_id]
+                    d = drone_positions[dst_id]
+                    ax_data.plot(
+                        [s[0], d[0]],
+                        [s[1], d[1]],
+                        [s[2], d[2]],
+                        linestyle=":",
+                        linewidth=1.5,
+                        color=self.comm_colors["TC"],
+                    )
+
+            data_legend = [
+                Line2D([0], [0], color=self.comm_colors["DATA"],  lw=2,   label="DATA"),
+                Line2D([0], [0], color=self.comm_colors["HELLO"], lw=1.5, linestyle="--", label="HELLO"),
+                Line2D([0], [0], color=self.comm_colors["TC"],    lw=1.5, linestyle=":",  label="TC"),
+            ]
+            ax_data.legend(handles=data_legend, loc='upper right')
+
+            ack_legend = [Line2D([0], [0], color=self.comm_colors["ACK"], lw=2, label="ACK")]
+            ax_ack.legend(handles=ack_legend, loc='upper right')
+            #######################
+            
+            # Route Overlay
+            if hasattr(self, "selected_route") and self.selected_route:
+                hops = self.selected_route
+                
+                # Draw arrows between each hop pair
+                for a, b in zip(hops[:-1], hops[1:]):
+                    if a in drone_positions and b in drone_positions:
+                        p1 = drone_positions[a]
+                        p2 = drone_positions[b]
+                        
+                        arrow = Arrow3D(
+                            [p1[0], p2[0]],
+                            [p1[1], p2[1]],
+                            [p1[2], p2[2]],
+                            mutation_scale=20,
+                            lw=3,
+                            arrowstyle="-|>",
+                            color="cyan"
+                        )
+                        ax_data.add_artist(arrow)
+                        ax_ack.add_artist(arrow)
+                
             
             # Add legends
             data_legend = [Line2D([0], [0], color=self.comm_colors["DATA"], lw=2, label="DATA Packets")]
@@ -449,11 +954,104 @@ class SimulationVisualizer:
             except Exception as e:
                 print(f"Error going to time: {e}")
         
+        #Playback logic (Start/Pause)
+        ######################
+        self.current_frame_index = 0
+        
+        def advance_frame():
+            if not self.is_playing:
+                return
+            
+            # Move to next frame
+            self.current_frame_index = (self.current_frame_index + 1) % len(frame_times_us)
+            next_time_us = frame_times_us[self.current_frame_index]
+            # This triggers update() via slider callback
+            time_slider.set_val(next_time_us)
+        
+        # Timer: how fast the animation plays (ms)
+        self._animation_timer = fig.canvas.new_timer(interval=200)
+        self._animation_timer.add_callback(advance_frame)
+        self._animation_timer.start()
+        
+        def on_play(event):
+            self.is_playing = True
+            
+        def on_pause(event):
+            self.is_playing = False
+        
+        def on_reset(event):
+            # Stop playback
+            self.is_playing = False
+
+            # Reset frame index
+            self.current_frame_index = 0
+
+            # Reset slider to the very first time (this triggers the plot update automatically)
+            first_time_us = frame_times_us[0]
+            time_slider.set_val(first_time_us)
+            
+        #Nx Speed Controls
+        speed1_ax = plt.axes([0.30, 0.13, 0.08, 0.05])
+        speed2_ax = plt.axes([0.40, 0.13, 0.08, 0.05])
+        speed4_ax = plt.axes([0.50, 0.13, 0.08, 0.05])
+        speed8_ax = plt.axes([0.60, 0.13, 0.08, 0.05])
+        
+        speed1_btn = Button(speed1_ax, "1x")
+        speed2_btn = Button(speed2_ax, "2x")
+        speed4_btn = Button(speed4_ax, "4x")
+        speed8_btn = Button(speed8_ax, "8x")
+        
+        
+        
+        
+        def set_speed(multiplier):
+            base_interval = 200  # ms, original speed
+            new_interval = max(10, base_interval / multiplier)  # avoid too tiny
+
+            # Safely update timer interval
+            try:
+                self._animation_timer.stop()
+                # Some Matplotlib versions use .interval, others have .set_interval()
+                if hasattr(self._animation_timer, "set_interval"):
+                    self._animation_timer.set_interval(new_interval)
+                else:
+                    self._animation_timer.interval = new_interval
+                self._animation_timer.start()
+                print(f"Playback speed set to {multiplier}× (interval={new_interval} ms)")
+            except Exception as e:
+                print(f"Error changing speed: {e}")
+                
+        def speed1(event):
+            set_speed(1)
+
+        def speed2(event):
+            set_speed(2)
+
+        def speed4(event):
+            set_speed(4)
+
+        def speed8(event):
+            set_speed(8)
+            
+        speed1_btn.on_clicked(speed1)
+        speed2_btn.on_clicked(speed2)
+        speed4_btn.on_clicked(speed4)
+        speed8_btn.on_clicked(speed8)
+        
+        
+        ######################
+        
         # Connect the update function to the slider
         time_slider.on_changed(update)
         
         # Connect the goto function to the button
         goto_button.on_clicked(goto_time)
+        
+        ##################### Buttons
+        play_button.on_clicked(on_play)
+        pause_button.on_clicked(on_pause)
+        reset_button.on_clicked(on_reset)
+        ##################### Buttons
         
         # Initial plot
         update_plot(self.frame_times[0])
@@ -484,71 +1082,280 @@ class SimulationVisualizer:
                     drone_positions[drone_id] = positions[closest_idx]
         return drone_positions
 
-    def _draw_drones(self, ax, drone_positions):
-        """Draw drones on the given axis with embedded ID numbers"""
-        for drone_id, position in drone_positions.items():
-            color = self.colors[drone_id]
+##################### Original Draw_drones
+    #def _draw_drones(self, ax, drone_positions):
+    #    """Draw drones on the given axis with embedded ID numbers"""
+    #    for drone_id, position in drone_positions.items():
+    #        color = self.colors[drone_id]
             
             # Use smaller marker size for drone representation
-            ax.scatter(position[0], position[1], position[2], 
-                    color=color, s=150, alpha=0.7, edgecolors='black')
+    #        ax.scatter(position[0], position[1], position[2], 
+    #                color=color, s=150, alpha=0.7, edgecolors='black')
             
             # Add ID text with outline for better visibility
             # Set high zorder to ensure text appears above other elements
-            text = ax.text(position[0], position[1], position[2], 
-                     f"{drone_id}", ha='center', va='center', 
-                     color='white', fontweight='bold', fontsize=10,
-                     path_effects=[path_effects.withStroke(linewidth=2, foreground='black')],
-                     zorder=100)  # Ensure text is displayed on top layer
+    #        text = ax.text(position[0], position[1], position[2], 
+    #                 f"{drone_id}", ha='center', va='center', 
+    #                 color='white', fontweight='bold', fontsize=10,
+    #                 path_effects=[path_effects.withStroke(linewidth=2, foreground='black')],
+    #                 zorder=100)  # Ensure text is displayed on top layer
+######################################
 
-    def _draw_data_links(self, ax, data_comms, drone_positions):
-        """Draw DATA packet links on the given axis with smaller packet ID boxes"""
-        for src_id, dst_id, packet_id, _, _ in data_comms:
-            if src_id in drone_positions and dst_id in drone_positions:
-                start_pos = drone_positions[src_id]
-                end_pos = drone_positions[dst_id]
+#New Draw_Drones
+######################
+    def _draw_drones(self, ax, drone_positions):
+        """Draw drones + battery bars."""
+        for drone_id, position in drone_positions.items():
+            color = self.colors[drone_id]
+            
+            # Draw drone icon
+            ax.scatter(
+                position[0], position[1], position[2],
+                color=color, s=150, alpha=0.9, edgecolors='black'
+            )
+            
+            # Draw ID number
+            ax.text(
+                position[0], position[1], position[2],
+                f"{drone_id}",
+                ha='center', va='center',
+                color='white', fontsize=10, fontweight='bold',
+                path_effects=[path_effects.withStroke(linewidth=2, foreground='black')],
+                zorder=100
+            )
+            
+            # NEW: battery bar
+            drone_obj = self.simulator.drones[drone_id]
+            self._draw_battery_bar(
+                ax, drone_obj,
+                position[0], position[1], position[2]
+            )
+######################
+
+########Original _draw_data_links
+    #def _draw_data_links(self, ax, data_comms, drone_positions):
+    #    """Draw DATA packet links on the given axis with smaller packet ID boxes"""
+    #    for src_id, dst_id, packet_id, _, _ in data_comms:
+    #        if src_id in drone_positions and dst_id in drone_positions:
+    #            start_pos = drone_positions[src_id]
+    #            end_pos = drone_positions[dst_id]
                 
                 # Draw an arrow for DATA packet
-                arrow = Arrow3D([start_pos[0], end_pos[0]], 
-                              [start_pos[1], end_pos[1]], 
-                              [start_pos[2], end_pos[2]],
-                              mutation_scale=15, 
-                              lw=2, 
-                              arrowstyle="-|>", 
-                              color=self.comm_colors["DATA"])
+    #            arrow = Arrow3D([start_pos[0], end_pos[0]], 
+    #                          [start_pos[1], end_pos[1]], 
+    #                          [start_pos[2], end_pos[2]],
+    #                          mutation_scale=15, 
+    #                          lw=2, 
+    #                          arrowstyle="-|>", 
+    #                          color=self.comm_colors["DATA"])
                 
-                ax.add_artist(arrow)
+    #            ax.add_artist(arrow)
                 
                 # Add more visible packet ID at midpoint
-                mid_x, mid_y, mid_z = [(start_pos[i] + end_pos[i]) / 2 for i in range(3)]
+    #            mid_x, mid_y, mid_z = [(start_pos[i] + end_pos[i]) / 2 for i in range(3)]
                 
                 # Draw a smaller, more compact background for the packet ID
-                ax.text(mid_x, mid_y, mid_z, str(packet_id), 
-                      ha='center', va='center', fontsize=7, fontweight='bold',
-                      bbox=dict(boxstyle="round,pad=0.2", facecolor='lightblue', 
-                                alpha=0.8, edgecolor=self.comm_colors["DATA"], linewidth=1.5),
-                      zorder=99)  # Display above other elements but below drone IDs
+    #            ax.text(mid_x, mid_y, mid_z, str(packet_id), 
+    #                  ha='center', va='center', fontsize=7, fontweight='bold',
+    #                  bbox=dict(boxstyle="round,pad=0.2", facecolor='lightblue', 
+    #                            alpha=0.8, edgecolor=self.comm_colors["DATA"], linewidth=1.5),
+    #                  zorder=99)  # Display above other elements but below drone IDs
+##############################################################
 
+    def _draw_data_links(self, ax, data_comms, drone_positions):
+        """Draw DATA packet links colored by SINR."""
+        from phy.large_scale_fading import sinr_calculator
+
+        for src_id, dst_id, packet_id, _, _ in data_comms:
+            if src_id in drone_positions and dst_id in drone_positions:
+
+                # Get SINR for this link
+                receiver = self.simulator.drones[dst_id]
+                main_list = [[src_id, 0]]  # (tx_id, channel_id placeholder)
+            
+                # Build interference list from latest transmitting events
+                interference = [[e[0], 0] for e in data_comms if e[0] != src_id]
+            
+                sinr_list = sinr_calculator(receiver, main_list, interference)
+                sinr = sinr_list[0] if sinr_list else 0
+
+                color = self._map_sinr_to_color(sinr)
+
+                start_pos = drone_positions[src_id]
+                end_pos = drone_positions[dst_id]
+
+                arrow = Arrow3D(
+                    [start_pos[0], end_pos[0]],
+                    [start_pos[1], end_pos[1]],
+                    [start_pos[2], end_pos[2]],
+                    mutation_scale=15,
+                    lw=2,
+                    arrowstyle="-|>",
+                    color=color
+                )
+                ax.add_artist(arrow)
+
+                # Label SINR above packet ID
+                mid_x = (start_pos[0] + end_pos[0]) / 2
+                mid_y = (start_pos[1] + end_pos[1]) / 2
+                mid_z = (start_pos[2] + end_pos[2]) / 2
+
+                ax.text(
+                    mid_x, mid_y, mid_z,
+                    f"{packet_id}\n{sinr:.1f} dB",
+                    ha='center', va='center', fontsize=7,
+                    bbox=dict(boxstyle="round,pad=0.2", facecolor='white', alpha=0.8)
+                )
+
+
+####################Original _draw_ack_links
+    #def _draw_ack_links(self, ax, ack_comms, drone_positions):
+    #    """Draw ACK packet links on the given axis with smaller packet ID boxes"""
+    #    for src_id, dst_id, packet_id, _, _ in ack_comms:
+    #        if src_id in drone_positions and dst_id in drone_positions:
+    #            start_pos = drone_positions[src_id]
+    #            end_pos = drone_positions[dst_id]
+                
+                # Draw a straight line for ACK packet
+    #            ax.plot([start_pos[0], end_pos[0]], 
+    #                   [start_pos[1], end_pos[1]], 
+    #                   [start_pos[2], end_pos[2]],
+    #                   color=self.comm_colors["ACK"], 
+    #                   linewidth=2)
+                
+                # Add more visible packet ID at midpoint
+    #            mid_x, mid_y, mid_z = [(start_pos[i] + end_pos[i]) / 2 for i in range(3)]
+                
+                # Draw a smaller, more compact background for the ACK packet ID
+    #            ax.text(mid_x, mid_y, mid_z, str(packet_id), 
+    #                   ha='center', va='center', fontsize=7, fontweight='bold',
+    #                   bbox=dict(boxstyle="round,pad=0.2", facecolor='lightgreen', 
+    #                            alpha=0.8, edgecolor=self.comm_colors["ACK"], linewidth=1.5),
+    #                   zorder=99)  # Display above other elements but below drone IDs
+##############################################
+
+############################################## Sinr Link
     def _draw_ack_links(self, ax, ack_comms, drone_positions):
-        """Draw ACK packet links on the given axis with smaller packet ID boxes"""
+        """Draw ACK links colored by SINR."""
+        from phy.large_scale_fading import sinr_calculator
+        
         for src_id, dst_id, packet_id, _, _ in ack_comms:
             if src_id in drone_positions and dst_id in drone_positions:
+                receiver = self.simulator.drones[dst_id]
+                main_list = [[src_id, 0]]
+                interference = [[e[0], 0] for e in ack_comms if e[0] != src_id]
+                
+                sinr_list = sinr_calculator(receiver, main_list, interference)
+                sinr = sinr_list[0] if sinr_list else 0
+                
+                color = self._map_sinr_to_color(sinr)
+                
                 start_pos = drone_positions[src_id]
                 end_pos = drone_positions[dst_id]
                 
-                # Draw a straight line for ACK packet
-                ax.plot([start_pos[0], end_pos[0]], 
-                       [start_pos[1], end_pos[1]], 
-                       [start_pos[2], end_pos[2]],
-                       color=self.comm_colors["ACK"], 
-                       linewidth=2)
+                ax.plot(
+                    [start_pos[0], end_pos[0]],
+                    [start_pos[1], end_pos[1]],
+                    [start_pos[2], end_pos[2]],
+                    color=color, linewidth=2
+                )
                 
-                # Add more visible packet ID at midpoint
-                mid_x, mid_y, mid_z = [(start_pos[i] + end_pos[i]) / 2 for i in range(3)]
+                mid_x = (start_pos[0] + end_pos[0]) / 2
+                mid_y = (start_pos[1] + end_pos[1]) / 2
+                mid_z = (start_pos[2] + end_pos[2]) / 2
                 
-                # Draw a smaller, more compact background for the ACK packet ID
-                ax.text(mid_x, mid_y, mid_z, str(packet_id), 
-                       ha='center', va='center', fontsize=7, fontweight='bold',
-                       bbox=dict(boxstyle="round,pad=0.2", facecolor='lightgreen', 
-                                alpha=0.8, edgecolor=self.comm_colors["ACK"], linewidth=1.5),
-                       zorder=99)  # Display above other elements but below drone IDs
+                ax.text(
+                    mid_x, mid_y, mid_z,
+                    f"{packet_id}\n{sinr:.1f} dB",
+                    ha='center', va='center', fontsize=7,
+                    bbox=dict(boxstyle="round,pad=0.2", facecolor='white', alpha=0.8)
+                )
+#################################################                        
+                
+                
+###################################                
+    def _map_sinr_to_color(self, sinr):
+        """Returns color string based on SINR value (dB)."""
+        if sinr > 20:
+            return "green"
+        elif sinr > 10:
+            return "yellow"
+        elif sinr > 0:
+            return "orange"
+        else:
+            return "red"
+###################################   
+
+# Battery Bars Above Each UAV
+###################################
+    def _energy_to_color(self, pct):
+        """Return color based on remaining battery percentage."""
+        if pct > 66:
+            return "green"
+        elif pct > 33:
+            return "yellow"
+        else:
+            return "red"
+    
+    def _draw_battery_bar(self, ax, drone, x, y, z):
+        """
+        Draw a floating battery bar above the drone's position. Treat ENERGY_THRESHOLD as 0% and INITIAL_ENERGY as %100
+        """
+        # --- Determine actual energy ---
+        actual_energy = getattr(drone, "energy",
+                            getattr(drone, "residual_energy",
+                            getattr(drone, "remaining_energy",
+                            getattr(drone, "battery_energy", None))))
+        
+        if actual_energy is None:
+            actual_energy = 0
+            
+        
+        usable_energy = max(actual_energy - config.ENERGY_THRESHOLD, 0)
+        total_usable = max(config.INITIAL_ENERGY - config.ENERGY_THRESHOLD, 1)
+        
+        # Remaining energy %
+        pct = (usable_energy / total_usable) * 100.0
+        pct = max(0, min(pct, 100))
+        pct_color = self._energy_to_color(pct)
+        
+        # Bar size
+        bar_width = 4
+        bar_height = 1
+        offset_z = 5  # height above drone
+        
+        # Rectangle corners
+        x0 = x - bar_width / 2
+        y0 = y
+        z0 = z + offset_z
+        
+        # Draw bar outline (white)
+        ax.plot(
+            [x0, x0 + bar_width, x0 + bar_width, x0, x0],
+            [y0, y0, y0, y0, y0],
+            [z0, z0, z0 + bar_height, z0 + bar_height, z0],
+            color="black",
+            linewidth=1
+        )
+        
+        # Filled portion (remaining battery)
+        filled_width = bar_width * (pct / 100)
+        
+        ax.plot(
+            [x0, x0 + filled_width, x0 + filled_width, x0, x0],
+            [y0, y0, y0, y0, y0],
+            [z0, z0, z0 + bar_height, z0 + bar_height, z0],
+            color=pct_color,
+            linewidth=4
+        )
+        
+        # Text label
+        ax.text(
+            x, y, z0 + 2,
+            f"{pct:.0f}%",
+            ha="center", va="center",
+            fontsize=7, fontweight="bold",
+            color="white",
+            bbox=dict(facecolor="black", alpha=0.6, boxstyle="round,pad=0.2")
+        )
+#########################       

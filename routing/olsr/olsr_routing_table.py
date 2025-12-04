@@ -12,13 +12,58 @@ class OlsrRoutingTable:
         self.entry_life_time = 8 * 1e6
         self.seq_no = 0
 
+    # Original
+    #def update_hello(self, packet, cur_time):
+    #    self.neighbor_table[packet.src_drone.identifier] = cur_time
+    #    self.recompute_routes()
+    #    # Detect if MPR set or neighbors changed
+    #    if packet.src_drone.identifier not in self.mpr_selector_set:
+    #        self.mpr_selector_set.add(packet.src_drone.identifier)
+    #        self.my_drone.routing_protocol.broadcast_tc()  # force immediate TC
+    
+    ####################### New
     def update_hello(self, packet, cur_time):
-        self.neighbor_table[packet.src_drone.identifier] = cur_time
+        """Update neighbor info when a HELLO is received."""
+        neighbor_id = packet.src_drone.identifier
+
+        # Remember that this neighbor is alive
+        self.neighbor_table[neighbor_id] = cur_time
+
+        # Direct 1-hop route to this neighbor via itself
+        # (dest = neighbor_id, next_hop = neighbor_id, hop_count = 1)
+        self.routing_table[neighbor_id] = [neighbor_id, 1, cur_time]
+
+        # Recompute multi-hop routes from my_drone to others
         self.recompute_routes()
-        # Detect if MPR set or neighbors changed
-        if packet.src_drone.identifier not in self.mpr_selector_set:
-            self.mpr_selector_set.add(packet.src_drone.identifier)
-            self.my_drone.routing_protocol.broadcast_tc()  # force immediate TC
+
+        # Treat each neighbor as selecting me as an MPR (simple but works for small nets)
+        if neighbor_id not in self.mpr_selector_set:
+            self.mpr_selector_set.add(neighbor_id)
+            # Force an immediate TC broadcast so others learn about this link
+            self.my_drone.routing_protocol.broadcast_tc()
+    ##############
+    
+    ############### Added get_route for visualizer
+    def get_route(self, dst_id):
+        """
+        Return a hop-by-hop route list for visualizer (e.g., [0,2,3]).
+        """
+        if dst_id not in self.routing_table:
+            return None
+
+        path = [self.my_drone.identifier]
+        current = self.routing_table[dst_id][0]
+
+        while current != dst_id:
+            path.append(current)
+            next_hop = self.routing_table.get(current, [None])[0]
+            if next_hop is None or next_hop in path:
+                return None
+            current = next_hop
+
+        path.append(dst_id)
+        return path
+    ###############
 
 
     def update_tc(self, packet, cur_time):
