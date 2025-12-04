@@ -118,9 +118,24 @@ class Drone:
         self.routing_protocol = Olsr(self.simulator, self)
         # from routing.aodv.aodv import Aodv
         # self.routing_protocol = Aodv(self.simulator, self)
+        self.routing = self.routing_protocol #Added GUI Team
         ############################################################################
 
-        self.mobility_model = GaussMarkov3D(self)
+        # self.mobility_model = GaussMarkov3D(self)
+        
+        ##### Mobility Team
+        # ---------------- mobility model selection ---------------- #
+        if config.MOBILITY_MODEL == "gauss_markov":
+            from mobility.gauss_markov_3d import GaussMarkov3D
+            self.mobility_model = GaussMarkov3D(self)
+
+        elif config.MOBILITY_MODEL == "leader_follower":
+            from mobility.leader_follower_3d import LeaderFollower3D
+            self.mobility_model = LeaderFollower3D(self)
+
+        else:
+            raise ValueError(f"Unknown MOBILITY_MODEL: {config.MOBILITY_MODEL}")
+        # -----------------------------------------------------------
         
         # self.motion_controller = VfMotionController(self)
 
@@ -133,9 +148,15 @@ class Drone:
         self.env.process(self.generate_data_packet())
         self.env.process(self.feed_packet())
         self.env.process(self.receive())
-        ###
-        self.env.process(self.move_toward_target())
-        ###
+        
+        #The custom movement will fight with leaderfollower we disable when using leaderfollower
+        #self.env.process(self.move_toward_target()) Original 12/3/25
+        
+        #####
+        # Only activate manual formation movement when NOT using LeaderFollower
+        if config.MOBILITY_MODEL != "leader_follower":
+            self.env.process(self.move_toward_target())
+        #####
 
     def generate_data_packet(self, traffic_pattern='Poisson'):
         """
@@ -162,6 +183,8 @@ class Drone:
                     yield self.env.timeout(round(self.rng_drone.expovariate(rate) * 1e6))
 
                 config.GL_ID_DATA_PACKET += 1  # data packet id
+                print(f"[GEN] Drone {self.identifier} generated DATA packet {config.GL_ID_DATA_PACKET}")
+
 
                 # randomly choose a destination
                 all_candidate_list = [i for i in range(config.NUMBER_OF_DRONES)]

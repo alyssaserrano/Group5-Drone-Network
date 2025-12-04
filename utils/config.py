@@ -14,6 +14,16 @@ STATIC_CASE = 0  # whether to simulate a static network
 HETEROGENEOUS = 0  # heterogeneous network support (in terms of speed)
 LOGGING_LEVEL = logging.INFO  # whether to print the detail information during simulation
 
+# ---------- Mobility Model/Speed Controls -----------#
+# MOBILITY_MODEL = "leader_follower"     # OR "gauss_markov"
+MOBILITY_MODEL = "gauss_markov"     # OR "gauss_markov"
+FORMATION_SWITCH_TIME = 300 * 1e6      # 300 seconds in μs
+
+SPEED_MODE = "low"     # options: "low", "medium", "high"
+SPEED_LOW = 5        # m/s
+SPEED_MEDIUM = 15    # m/s
+SPEED_HIGH = 40      # m/s
+
 # ---------- hardware parameters of drone (rotary-wing) -----------#
 PROFILE_DRAG_COEFFICIENT = 0.012
 AIR_DENSITY = 1.225  # kg/m^3

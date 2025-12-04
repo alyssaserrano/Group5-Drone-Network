@@ -47,6 +47,8 @@ class Simulator:
         self.channel_states = channel_states
         # self.channel = Channel(self.env)
         self.channel = ProbChannel(self.env)  # using ProbChannel by default
+        
+        self.channel.simulator = self # Added 12/3/25
 
         self.metrics = Metrics(self)  # use to record the network performance
 
@@ -54,16 +56,44 @@ class Simulator:
         # NOTE: if distributed optimization is adopted, remember to comment this to speed up simulation
         # self.central_controller = CentralController(self)
 
-        start_position = start_coords.get_random_start_point_3d(seed)
+        ## start_position = start_coords.get_random_start_point_3d(seed) Original 12/3/25
         # start_position = start_coords.get_customized_start_point_3d()
+        
+        ############### Leader Follower expects specific offsets #12/3/25
+        if config.MOBILITY_MODEL == "leader_follower":
+            # Leader at middle, others near it
+            cx, cy, cz = config.MAP_LENGTH/2, config.MAP_WIDTH/2, 50
+            start_position = [
+                [cx,     cy,     cz],      # leader
+                [cx+50,  cy,     cz],      # follower 1
+                [cx-50,  cy,     cz],      # follower 2
+                [cx,     cy+50,  cz],      # follower 3
+            ]
+        else:
+            start_position = start_coords.get_random_start_point_3d(seed)
+        ###############
 
         self.drones = []
         print('Seed is: ', self.seed)
         for i in range(n_drones):
-            if config.HETEROGENEOUS:
-                speed = random.randint(5, 60)
+        #    if config.HETEROGENEOUS:          #12/3/25
+        #        speed = random.randint(5, 60)
+        #    else:
+        #        speed = 10
+            # ---------------- speed sweep selection ---------------- # #12/3/25
+            if hasattr(config, "SPEED_MODE"):
+                if config.SPEED_MODE == "low":
+                    speed = config.SPEED_LOW
+                elif config.SPEED_MODE == "medium":
+                    speed = config.SPEED_MEDIUM
+                elif config.SPEED_MODE == "high":
+                    speed = config.SPEED_HIGH
+                else:
+                    raise ValueError(f"Unknown SPEED_MODE: {config.SPEED_MODE}")
             else:
-                speed = 10
+                speed = 10  # fallback
+            print(f"[Speed Sweep] Drone {i} speed set to {speed} m/s") #Sanity check
+            # -------------------------------------------------------- #
 
             print('UAV: ', i, ' initial location is at: ', start_position[i], ' speed is: ', speed)
             drone = Drone(env=env,
@@ -99,6 +129,19 @@ class Simulator:
     
 #Metric accessors for visualizer    
 ###########################
+    def get_route_path(self, src_id, dst_id):
+        """
+        Return the hop-by-hop route path from src → dst using AODV tables.
+        """
+        try:
+            src_drone = self.drones[src_id]
+            rt = src_drone.routing_protocol.route_table
+            path = rt.get_path(dst_id)
+            return path
+        except Exception as e:
+            print("Route lookup error:", e)
+            return None
+
     def get_pdr(self):
         """
         Packet Delivery Ratio as a fraction in [0, 1].

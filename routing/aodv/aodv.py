@@ -209,6 +209,9 @@ class Aodv:
             if dst_id == me:
                 if pkt.packet_id not in self.simulator.metrics.datapacket_arrived:
                     self.simulator.metrics.calculate_metrics(pkt)
+                    ############ Record Route for Overlay 
+                    self.simulator.metrics.packet_routes[pkt.packet_id] = list(pkt.path_history)
+                    #############
                     logger.info(
                         "At time: %s (us) ---- UAV: %s received DATA (id: %s) as DESTINATION",
                         current_time, me, pkt.packet_id
@@ -244,6 +247,11 @@ class Aodv:
                         # Forward unicast toward next hop via MAC
                         pkt.next_hop_id = next_hop
                         pkt.transmission_mode = 0  # unicast
+                        
+                        ############# Record hop for overlay
+                        pkt.path_history.append(self.my_drone.identifier)
+                        #############
+                        
                         self.my_drone.transmitting_queue.put(pkt)
                         logger.info(
                             "At time: %s (us) ---- UAV: %s FORWARD DATA (id: %s) toward dst %s via next_hop %s",

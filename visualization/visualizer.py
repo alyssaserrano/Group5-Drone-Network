@@ -71,7 +71,8 @@ class SimulationVisualizer:
         self.comm_colors = {
             "DATA": "blue",
             "ACK": "green",
-            "HELLO": "orange"
+            "HELLO": "orange",
+            "TC": "magenta",
         }
         
         # Setup communication tracking
@@ -101,36 +102,141 @@ class SimulationVisualizer:
         self.energy_series = []     # e.g., average remaining energy
         #####################################
     
-    def _setup_communication_tracking(self):
-        """Setup tracking for communication events"""
+    ################### ORIGINAL
+    #def _setup_communication_tracking(self):
+    #    """Setup tracking for communication events"""
         # Save the original unicast_put method
-        original_unicast_put = self.simulator.channel.unicast_put
+    #    original_unicast_put = self.simulator.channel.unicast_put
         
         # Rewrite unicast_put method to track communications
-        def tracked_unicast_put(message, dst_drone_id):
+    #    def tracked_unicast_put(message, dst_drone_id):
             # Call the original method
-            result = original_unicast_put(message, dst_drone_id)
+    #        result = original_unicast_put(message, dst_drone_id)
             
             # Record communication event
-            packet, _, src_drone_id, _, _ = message
+    #        packet, _, src_drone_id, _, _ = message
             
             # Add packet type differentiation
-            packet_id = packet.packet_id
+    #        packet_id = packet.packet_id
             
             # Identify packet type based on ID range
-            if packet_id >= 20000:
-                packet_type = "ACK"
-            elif packet_id >= 10000:
-                packet_type = "HELLO"
-            else:
-                packet_type = "DATA"
+    #        if packet_id >= 20000:
+    #            packet_type = "ACK"
+    #        elif packet_id >= 10000:
+    #            packet_type = "HELLO"
+    #        else:
+    #            packet_type = "DATA"
             
-            self.track_communication(src_drone_id, dst_drone_id, packet_id, packet_type)
+    #        self.track_communication(src_drone_id, dst_drone_id, packet_id, packet_type)
             
-            return result
+    #        return result
         
         # Replace the method
-        self.simulator.channel.unicast_put = tracked_unicast_put
+    #    self.simulator.channel.unicast_put = tracked_unicast_put
+    ######################################
+    
+    ##### NEW
+    def _setup_communication_tracking(self):
+        """Hook channel methods so we can track DATA / ACK / HELLO / TC."""
+        ch = self.simulator.channel
+
+        # Save originals (could be ProbChannel methods)
+        original_unicast   = getattr(ch, "unicast_put", None)
+        original_broadcast = getattr(ch, "broadcast_put", None)
+        original_multicast = getattr(ch, "multicast_put", None)
+
+        # ---------- helper: classify packet type ----------
+        def classify_packet(packet):
+            """
+            Try to infer logical type from packet fields first.
+            Fall back to ID-based ranges.
+            """
+            # Prefer explicit packet type fields if they exist
+            for attr in ("msg_type", "packet_type", "pkt_type", "type"):
+                if hasattr(packet, attr):
+                    t = str(getattr(packet, attr)).upper()
+                    if t in ("DATA", "ACK", "HELLO", "TC"):
+                        return t
+
+            # Fallback: ID ranges (custom to your sim)
+            pid = getattr(packet, "packet_id", 0)
+            if pid >= 30000:
+                return "TC"
+            elif pid >= 20000:
+                return "ACK"
+            elif pid >= 10000:
+                return "HELLO"
+            else:
+                return "DATA"
+
+        # ---------- wrap unicast ----------
+        if original_unicast is not None:
+
+            def tracked_unicast_put(message, dst_id):
+                # Call real channel logic first
+                result = original_unicast(message, dst_id)
+
+                try:
+                    packet, _, src_drone_id, _, _ = message
+                except Exception:
+                    return result
+
+                packet_id   = getattr(packet, "packet_id", -1)
+                packet_type = classify_packet(packet)
+
+                self.track_communication(src_drone_id, dst_id, packet_id, packet_type)
+                return result
+
+            ch.unicast_put = tracked_unicast_put
+
+        # ---------- wrap broadcast ----------
+        if original_broadcast is not None:
+
+            def tracked_broadcast_put(message):
+                # Let the channel actually deliver
+                result = original_broadcast(message)
+
+                try:
+                    packet, _, src_drone_id, _, _ = message
+                except Exception:
+                    return result
+
+                packet_id   = getattr(packet, "packet_id", -1)
+                packet_type = classify_packet(packet)
+
+                # Log one event per dst for visualization
+                for dst_id in range(self.simulator.n_drones):
+                    if dst_id == src_drone_id:
+                        continue
+                    self.track_communication(src_drone_id, dst_id, packet_id, packet_type)
+
+                return result
+
+            ch.broadcast_put = tracked_broadcast_put
+
+        # ---------- wrap multicast ----------
+        if original_multicast is not None:
+
+            def tracked_multicast_put(message, dst_id_list):
+                result = original_multicast(message, dst_id_list)
+
+                try:
+                    packet, _, src_drone_id, _, _ = message
+                except Exception:
+                    return result
+
+                packet_id   = getattr(packet, "packet_id", -1)
+                packet_type = classify_packet(packet)
+
+                for dst_id in dst_id_list:
+                    if dst_id == src_drone_id:
+                        continue
+                    self.track_communication(src_drone_id, dst_id, packet_id, packet_type)
+
+                return result
+
+            ch.multicast_put = tracked_multicast_put
+    ########
     
     ##########################################
     def track_metrics(self):
@@ -184,6 +290,7 @@ class SimulationVisualizer:
         Record communication event
         """
         current_time = self.simulator.env.now / 1e6  # Convert to seconds
+        print(f"[COMM] t={current_time:.6f}s src={src_id} dst={dst_id} id={packet_id} type={packet_type}") #NEW sanity check 12/3/25
         # Record complete communication event information
         self.comm_events.append((src_id, dst_id, packet_id, packet_type, current_time))
     
@@ -230,6 +337,8 @@ class SimulationVisualizer:
         # Get only the latest communication events for each src-dst pair
         latest_data_comms = self._get_latest_comms(recent_comms, "DATA")
         latest_ack_comms = self._get_latest_comms(recent_comms, "ACK")
+        latest_hello_comms = self._get_latest_comms(recent_comms, "HELLO") # added packet
+        latest_tc_comms = self._get_latest_comms(recent_comms, "TC") # added packet
         
         # Draw DATA packet links on left subplot
         self._draw_data_links(ax_data, latest_data_comms, drone_positions)
@@ -237,8 +346,44 @@ class SimulationVisualizer:
         # Draw ACK packet links on right subplot
         self._draw_ack_links(ax_ack, latest_ack_comms, drone_positions)
         
+        #####
+        for src_id, dst_id, packetid, _, _ in latest_hello_comms:
+            if src_id in drone_positions and dst_id in drone_positions:
+                s = drone_positions[src_id]
+                d = drone_positions[dst_id]
+                ax_data.plot(
+                    [s[0], d[0]],
+                    [s[1], d[1]],
+                    [s[2], d[2]],
+                    linestyle="--",
+                    linewidth=1.5,
+                    color=self.comm_colors["HELLO"],
+                )
+
+        for src_id, dst_id, packetid, _, _ in latest_tc_comms:
+            if src_id in drone_positions and dst_id in drone_positions:
+                s = drone_positions[src_id]
+                d = drone_positions[dst_id]
+                ax_data.plot(
+                    [s[0], d[0]],
+                    [s[1], d[1]],
+                    [s[2], d[2]],
+                    linestyle=":",
+                    linewidth=1.5,
+                    color=self.comm_colors["TC"],
+                )
+        #####
+        
         # Add legends
+        """###Original code###
         data_legend = [Line2D([0], [0], color=self.comm_colors["DATA"], lw=2, label="DATA Packets")]
+        ax_data.legend(handles=data_legend, loc='upper right')
+        """
+        data_legend = [
+            Line2D([0], [0], color=self.comm_colors["DATA"],  lw=2,   label="DATA"),
+            Line2D([0], [0], color=self.comm_colors["HELLO"], lw=1.5, linestyle="--", label="HELLO"),
+            Line2D([0], [0], color=self.comm_colors["TC"],    lw=1.5, linestyle=":",  label="TC"),
+        ]
         ax_data.legend(handles=data_legend, loc='upper right')
         
         ack_legend = [Line2D([0], [0], color=self.comm_colors["ACK"], lw=2, label="ACK Packets")]
@@ -498,6 +643,13 @@ class SimulationVisualizer:
         text_ax = plt.axes([0.2, 0.01, 0.2, 0.03])
         time_text = TextBox(text_ax, 'Go to time (μs): ', initial='')
         
+        #Route Overlay Controls
+        route_text_ax = plt.axes([0.80, 0.13, 0.12, 0.04])
+        route_textbox = TextBox(route_text_ax, "Flow (src dst):", initial="")
+
+        route_btn_ax = plt.axes([0.80, 0.08, 0.12, 0.04])
+        route_button = Button(route_btn_ax, "Show Route")
+        
         button_ax = plt.axes([0.45, 0.01, 0.1, 0.03])
         goto_button = Button(button_ax, 'Go')
         
@@ -521,6 +673,9 @@ class SimulationVisualizer:
 
         def on_line_form(event):
             self.simulator.trigger_formation("line")
+            
+        
+        
         
         #Create Buttons
         orig_ax = plt.axes([0.05, 0.20, 0.12, 0.045])
@@ -549,6 +704,108 @@ class SimulationVisualizer:
         vform_button.on_clicked(on_v)
         line_button.on_clicked(on_line)
         ###########
+        
+        
+        #### Route Overlay (OLSR: flow src -> dst)
+        def show_route(event):
+            """
+            Read 'src dst' from the textbox and build a path using
+            OLSR's best_next_hop() at each hop.
+            """
+            try:
+                text = route_textbox.text.strip()
+                if not text:
+                    print("Enter flow as: src dst  (example: 0 3)")
+                    self.selected_route = []
+                    return
+
+                parts = text.split()
+                if len(parts) != 2:
+                    print("Format must be: src dst  (two integers)")
+                    self.selected_route = []
+                    return
+
+                src = int(parts[0])
+                dst = int(parts[1])
+
+                n = len(self.simulator.drones)
+                if not (0 <= src < n and 0 <= dst < n):
+                    print(f"Drone IDs must be between 0 and {n-1}")
+                    self.selected_route = []
+                    return
+
+                if src == dst:
+                    print("Source and destination are the same.")
+                    self.selected_route = [src]
+                    # Redraw just to clear any old overlay
+                    update_plot(time_slider.val / 1e6)
+                    fig.canvas.draw_idle()
+                    return
+
+                path = [src]
+                visited = {src}
+                current = src
+                success = False
+
+                # Walk at most n-1 hops to avoid infinite loops
+                for _ in range(n - 1):
+                    drone = self.simulator.drones[current]
+                    rp = getattr(drone, "routing_protocol", None)
+                    if rp is None:
+                        print(f"Drone {current} has no routing_protocol")
+                        break
+
+                    # OLSR: use its routing table + best_next_hop()
+                    table = getattr(rp, "table", None)
+                    if table is None or not hasattr(table, "best_next_hop"):
+                        print(f"Routing protocol on drone {current} has no OLSR table / best_next_hop")
+                        break
+
+                    # OLSR's next-hop decision for destination dst
+                    next_hop = table.best_next_hop(dst)
+
+                    # Your OLSR next_hop_selection uses the rule:
+                    # has_route = best_next_hop_id != my_drone.identifier
+                    if next_hop == current:
+                        print(f"No route entry at drone {current} for destination {dst}")
+                        break
+
+                    if next_hop in visited:
+                        print("Detected routing loop, aborting.")
+                        break
+
+                    path.append(next_hop)
+                    visited.add(next_hop)
+
+                    if next_hop == dst:
+                        success = True
+                        break
+
+                    current = next_hop
+
+                if not success:
+                    print(f"Could not build full path from {src} to {dst}")
+                    self.selected_route = []
+                    update_plot(time_slider.val / 1e6)
+                    fig.canvas.draw_idle()
+                    return
+
+                # Success
+                self.selected_route = path
+                print(f"[ROUTE] (OLSR) {src} -> {dst} path:", path)
+
+                # Force redraw with overlay
+                update_plot(time_slider.val / 1e6)
+                fig.canvas.draw_idle()
+
+            except ValueError:
+                print("Both src and dst must be integers (example: 0 3).")
+                self.selected_route = []
+
+        route_button.on_clicked(show_route)
+        ####
+        
+        
         
         
         def update_plot(current_time):
@@ -589,9 +846,74 @@ class SimulationVisualizer:
             latest_data_comms = self._get_latest_comms(recent_comms, "DATA")
             latest_ack_comms = self._get_latest_comms(recent_comms, "ACK")
             
+            # Added hello / TC Packets 12/3/25
+            latest_hello_comms = self._get_latest_comms(recent_comms, "HELLO")
+            latest_tc_comms = self._get_latest_comms(recent_comms, "TC")
+            
             # Draw communication links
             self._draw_data_links(ax_data, latest_data_comms, drone_positions)
             self._draw_ack_links(ax_ack, latest_ack_comms, drone_positions)
+            
+            ############ Added 12/3/25
+            for src_id, dst_id, packetid, _, _ in latest_hello_comms:
+                if src_id in drone_positions and dst_id in drone_positions:
+                    s = drone_positions[src_id]
+                    d = drone_positions[dst_id]
+                    ax_data.plot(
+                        [s[0], d[0]],
+                        [s[1], d[1]],
+                        [s[2], d[2]],
+                        linestyle="--",
+                        linewidth=1.5,
+                        color=self.comm_colors["HELLO"],
+                    )
+
+            for src_id, dst_id, packetid, _, _ in latest_tc_comms:
+                if src_id in drone_positions and dst_id in drone_positions:
+                    s = drone_positions[src_id]
+                    d = drone_positions[dst_id]
+                    ax_data.plot(
+                        [s[0], d[0]],
+                        [s[1], d[1]],
+                        [s[2], d[2]],
+                        linestyle=":",
+                        linewidth=1.5,
+                        color=self.comm_colors["TC"],
+                    )
+
+            data_legend = [
+                Line2D([0], [0], color=self.comm_colors["DATA"],  lw=2,   label="DATA"),
+                Line2D([0], [0], color=self.comm_colors["HELLO"], lw=1.5, linestyle="--", label="HELLO"),
+                Line2D([0], [0], color=self.comm_colors["TC"],    lw=1.5, linestyle=":",  label="TC"),
+            ]
+            ax_data.legend(handles=data_legend, loc='upper right')
+
+            ack_legend = [Line2D([0], [0], color=self.comm_colors["ACK"], lw=2, label="ACK")]
+            ax_ack.legend(handles=ack_legend, loc='upper right')
+            #######################
+            
+            # Route Overlay
+            if hasattr(self, "selected_route") and self.selected_route:
+                hops = self.selected_route
+                
+                # Draw arrows between each hop pair
+                for a, b in zip(hops[:-1], hops[1:]):
+                    if a in drone_positions and b in drone_positions:
+                        p1 = drone_positions[a]
+                        p2 = drone_positions[b]
+                        
+                        arrow = Arrow3D(
+                            [p1[0], p2[0]],
+                            [p1[1], p2[1]],
+                            [p1[2], p2[2]],
+                            mutation_scale=20,
+                            lw=3,
+                            arrowstyle="-|>",
+                            color="cyan"
+                        )
+                        ax_data.add_artist(arrow)
+                        ax_ack.add_artist(arrow)
+                
             
             # Add legends
             data_legend = [Line2D([0], [0], color=self.comm_colors["DATA"], lw=2, label="DATA Packets")]
@@ -678,6 +1000,9 @@ class SimulationVisualizer:
         speed2_btn = Button(speed2_ax, "2x")
         speed4_btn = Button(speed4_ax, "4x")
         speed8_btn = Button(speed8_ax, "8x")
+        
+        
+        
         
         def set_speed(multiplier):
             base_interval = 200  # ms, original speed
