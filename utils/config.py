@@ -7,22 +7,25 @@ IEEE_802_11 = IeeeStandard().b_802_11
 MAP_LENGTH = 600  # m, length of the map
 MAP_WIDTH = 600  # m, width of the map
 MAP_HEIGHT = 100  # m, height of the map
-SIM_TIME = 30 * 1e6  # us, total simulation time
+SIM_TIME = 30 * 1e6  # us, total simulation time #Original 30 * 1e6
 NUMBER_OF_DRONES = 4  # number of drones in the network
 GRID_RESOLUTION = 20  # grid the map for path planning
 STATIC_CASE = 0  # whether to simulate a static network
 HETEROGENEOUS = 0  # heterogeneous network support (in terms of speed)
-LOGGING_LEVEL = logging.INFO  # whether to print the detail information during simulation
+LOGGING_LEVEL = logging.WARNING #Original (logging.INFO) # whether to print the detail information during simulation
 
 # ---------- Mobility Model/Speed Controls -----------#
-# MOBILITY_MODEL = "leader_follower"     # OR "gauss_markov"
-MOBILITY_MODEL = "gauss_markov"     # OR "gauss_markov"
-FORMATION_SWITCH_TIME = 300 * 1e6      # 300 seconds in μs
+MOBILITY_MODEL = "leader_follower"     # OR "leader_follower"
+# MOBILITY_MODEL = "gauss_markov"     # OR "random_waypoint"
+FORMATION_SWITCH_TIME = 15 * 1e6      # 300 seconds in μs
 
 SPEED_MODE = "low"     # options: "low", "medium", "high"
 SPEED_LOW = 5        # m/s
 SPEED_MEDIUM = 15    # m/s
 SPEED_HIGH = 40      # m/s
+
+# ------------------ E2: TX Power Sweep ------------------
+TX_POWER_MODE = "medium"      # choose: "low", "medium", "high"
 
 # ---------- hardware parameters of drone (rotary-wing) -----------#
 PROFILE_DRAG_COEFFICIENT = 0.012

@@ -157,7 +157,7 @@ class Phy:
         self.my_drone.simulator.channel.multicast_put(message, dst_id_list)
         
 
-
+""" Original 12/6/25
 if __name__ == "__main__":
     print("------------STANDALONE POWER TEST------------")
     # Fake packet object for testing
@@ -206,5 +206,43 @@ if __name__ == "__main__":
     print("Residual energy after Broadcast:", phy.my_drone.residual_energy)
 
     print("\nTest complete.")
+"""
 
+##########
+def __init__(self, mac):
+    self.mac = mac
+    self.env = mac.env
+    self.my_drone = mac.my_drone
+    self.profile = wifi_direct  # tech profile
 
+    # ---------------- TX POWER SWEEP (E2) ---------------- #
+    # If config overrides the power mode, use it.
+    # Otherwise fall back to the profile default (high).
+    if hasattr(config, "TX_POWER_MODE"):
+        mode = config.TX_POWER_MODE.lower()
+
+        if mode in self.profile.tx_power_levels:
+            self.current_tx_power_label = mode
+            self.current_tx_power_dbm = self.profile.tx_power_levels[mode]
+        else:
+            raise ValueError(
+                f"Unknown TX_POWER_MODE '{mode}'. "
+                f"Valid: {list(self.profile.tx_power_levels.keys())}"
+            )
+    else:
+        # Default selection if no override provided
+        if self.profile.tx_power_levels:
+            self.current_tx_power_label = "high"
+            self.current_tx_power_dbm = self.profile.tx_power_levels["high"]
+        else:
+            self.current_tx_power_label = "max"
+            self.current_tx_power_dbm = self.profile.tx_power_range[1]
+
+    print(
+        f"[TX POWER] Drone {getattr(self.my_drone, 'identifier', '?')} "
+        f"using {self.current_tx_power_label.upper()} "
+        f"({self.current_tx_power_dbm} dBm)"
+    )
+    # ------------------------------------------------------ #
+
+##########

@@ -8,6 +8,7 @@ from entities.packet import DataPacket
 from mac.csma_ca import CsmaCa
 from mac.csma_ca_v2 import CsmaCaV2
 from mobility.gauss_markov_3d import GaussMarkov3D
+from mobility.random_waypoint_3d import RandomWaypoint3D
 from energy.energy_model import EnergyModel
 from allocation.channel_assignment import ChannelAssigner
 from utils import config
@@ -116,8 +117,8 @@ class Drone:
         # self.routing_protocol = Dsdv(self.simulator, self)
         from routing.olsr.olsr import Olsr
         self.routing_protocol = Olsr(self.simulator, self)
-        # from routing.aodv.aodv import Aodv
-        # self.routing_protocol = Aodv(self.simulator, self)
+        #from routing.aodv.aodv import Aodv
+        #self.routing_protocol = Aodv(self.simulator, self)
         self.routing = self.routing_protocol #Added GUI Team
         ############################################################################
 
@@ -132,6 +133,10 @@ class Drone:
         elif config.MOBILITY_MODEL == "leader_follower":
             from mobility.leader_follower_3d import LeaderFollower3D
             self.mobility_model = LeaderFollower3D(self)
+            
+        elif config.MOBILITY_MODEL == "random_waypoint":
+            from mobility.random_waypoint_3d import RandomWaypoint3D
+            self.mobility_model = RandomWaypoint3D(self)    
 
         else:
             raise ValueError(f"Unknown MOBILITY_MODEL: {config.MOBILITY_MODEL}")
@@ -154,8 +159,13 @@ class Drone:
         
         #####
         # Only activate manual formation movement when NOT using LeaderFollower
-        if config.MOBILITY_MODEL != "leader_follower":
+        #if config.MOBILITY_MODEL != "leader_follower":
+        #    self.env.process(self.move_toward_target())
+            
+            
+        if config.MOBILITY_MODEL not in ["leader_follower", "random_waypoint"]:
             self.env.process(self.move_toward_target())
+    
         #####
 
     def generate_data_packet(self, traffic_pattern='Poisson'):
@@ -183,7 +193,10 @@ class Drone:
                     yield self.env.timeout(round(self.rng_drone.expovariate(rate) * 1e6))
 
                 config.GL_ID_DATA_PACKET += 1  # data packet id
-                print(f"[GEN] Drone {self.identifier} generated DATA packet {config.GL_ID_DATA_PACKET}")
+                
+                
+                print(f"[GEN] Drone {self.identifier} generated DATA packet {config.GL_ID_DATA_PACKET}") #Original 12/6/25
+            
 
 
                 # randomly choose a destination

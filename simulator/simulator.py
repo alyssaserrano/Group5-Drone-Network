@@ -60,17 +60,42 @@ class Simulator:
         # start_position = start_coords.get_customized_start_point_3d()
         
         ############### Leader Follower expects specific offsets #12/3/25
-        if config.MOBILITY_MODEL == "leader_follower":
+        #if config.MOBILITY_MODEL == "leader_follower":
             # Leader at middle, others near it
+        #    cx, cy, cz = config.MAP_LENGTH/2, config.MAP_WIDTH/2, 50
+        #    start_position = [
+        #        [cx,     cy,     cz],      # leader
+        #        [cx+50,  cy,     cz],      # follower 1
+        #        [cx-50,  cy,     cz],      # follower 2
+        #        [cx,     cy+50,  cz],      # follower 3
+        #    ]
+        #else:
+        #    start_position = start_coords.get_random_start_point_3d(seed)
+        
+        ############### Leader–Follower dynamic start positions 12/5/25
+        if config.MOBILITY_MODEL == "leader_follower":
+
             cx, cy, cz = config.MAP_LENGTH/2, config.MAP_WIDTH/2, 50
-            start_position = [
-                [cx,     cy,     cz],      # leader
-                [cx+50,  cy,     cz],      # follower 1
-                [cx-50,  cy,     cz],      # follower 2
-                [cx,     cy+50,  cz],      # follower 3
-            ]
+            start_position = []
+
+            # Leader first
+            start_position.append([cx, cy, cz])
+
+            # Followers arranged in a circle around leader
+            radius = 60
+            num_followers = self.n_drones - 1
+
+            for k in range(num_followers):
+                angle = 2 * np.pi * k / max(1, num_followers)
+                fx = cx + radius * np.cos(angle)
+                fy = cy + radius * np.sin(angle)
+                fz = cz
+                start_position.append([fx, fy, fz])
+
         else:
             start_position = start_coords.get_random_start_point_3d(seed)
+        
+        
         ###############
 
         self.drones = []
@@ -109,6 +134,9 @@ class Simulator:
 
         self.env.process(self.show_performance())
         self.env.process(self.show_time())
+        
+        # E3: probe KPIs around the formation switch
+        self.env.process(self.formation_kpi_probe())
 
     def show_time(self):
         while True:
@@ -121,10 +149,17 @@ class Simulator:
         yield self.env.timeout(self.total_simulation_time - 1)
 
         scatter_plot(self)
-        
-        
-
         self.metrics.print_metrics()
+        
+        # ---------------------------
+        # E3 FINAL REPORT (AT END)
+        # ---------------------------
+        #print("\n[E3] FINAL POST-SIMULATION KPIs")
+        #print(f"  PDR:      {self.get_pdr():.3f}")
+        #print(f"  Latency:  {self.get_avg_latency():.2f} ms")
+        #print(f"  Jitter:   {self.get_jitter():.2f} ms")
+        #print(f"  Queue sz: {self.get_avg_queue_size():.2f}")
+        #print(f"  Energy:   {self.get_avg_energy():.2f}")
         
     
 #Metric accessors for visualizer    
@@ -244,3 +279,52 @@ class Simulator:
 
         print("\n--- Formation Set: LINE FORMATION ---")
 ############################
+
+
+########## 12/6/25
+    def formation_kpi_probe(self):
+        """
+        E3 helper: print KPIs before / during / after the formation switch.
+        Assumes FORMATION_SWITCH_TIME is within SIM_TIME.
+        """
+
+        # If no switch time is configured, or it's outside the sim window, just do nothing
+        if not hasattr(config, "FORMATION_SWITCH_TIME"):
+            return
+        switch_t = config.FORMATION_SWITCH_TIME
+        if switch_t >= self.total_simulation_time:
+            return
+
+        # Choose three probe times (all in microseconds)
+        t_before = max(1 * 1e6, switch_t - 2 * 1e6)   # 2 seconds before
+        t_during = switch_t                           # at the switch
+        t_after  = min(self.total_simulation_time - 1e6, switch_t + 5 * 1e6)  # 5 seconds after
+
+        # --- BEFORE ---
+        yield self.env.timeout(t_before - self.env.now)
+        print("\n[E3] BEFORE switch at t = %.2fs" % (self.env.now / 1e6))
+        print("  PDR:      %.2f" % self.get_pdr())
+        print("  Latency:  %.2f ms" % self.get_avg_latency())
+        print("  Jitter:   %.2f ms" % self.get_jitter())
+        print("  Queue sz: %.2f" % self.get_avg_queue_size())
+        print("  Energy:   %.2f" % self.get_avg_energy())
+
+        # --- DURING (right around switch) ---
+        yield self.env.timeout(t_during - self.env.now)
+        print("\n[E3] DURING switch at t = %.2fs" % (self.env.now / 1e6))
+        print("  PDR:      %.2f" % self.get_pdr())
+        print("  Latency:  %.2f ms" % self.get_avg_latency())
+        print("  Jitter:   %.2f ms" % self.get_jitter())
+        print("  Queue sz: %.2f" % self.get_avg_queue_size())
+        print("  Energy:   %.2f" % self.get_avg_energy())
+
+        # --- AFTER (recovered state) ---
+        yield self.env.timeout(t_after - self.env.now)
+        print("\n[E3] AFTER switch at t = %.2fs" % (self.env.now / 1e6))
+        print("  PDR:      %.2f" % self.get_pdr())
+        print("  Latency:  %.2f ms" % self.get_avg_latency())
+        print("  Jitter:   %.2f ms" % self.get_jitter())
+        print("  Queue sz: %.2f" % self.get_avg_queue_size())
+        print("  Energy:   %.2f" % self.get_avg_energy())
+
+##########

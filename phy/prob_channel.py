@@ -98,6 +98,7 @@ class ProbChannel(Channel):
             
 # testing if code above works standalone before connecting to rest of simulator    
 
+
 if __name__ == "__main__":
     print("[TEST] Running ProbChannel standalone test for unicast...")
 
@@ -131,8 +132,8 @@ if __name__ == "__main__":
     for i in [1, 3, 4]:
         print(f"Drone {i} inbox:", channel.pipes[i])
     print("\n")
-    
-    
+
+
     
 
 

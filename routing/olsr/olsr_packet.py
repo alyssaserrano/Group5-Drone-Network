@@ -12,7 +12,7 @@ class OlsrHelloPacket(Packet):
         self.msg_type = 'HELLO'
         
         ###
-        # Required for MAC
+        ### Required for MAC
         from collections import defaultdict
         self.number_retransmission_attempt = defaultdict(int)
         self.time_transmitted_at_last_hop = 0
