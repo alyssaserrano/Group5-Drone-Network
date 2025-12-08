@@ -9,14 +9,6 @@ from phy.tech_profiles import wifi_11ac
 from phy.tech_profiles import wifi_direct
 from phy.channel_create import create_channel
 
-"""
-  _   _                   _   _          _     ____    _             
- | | | |   __ _  __   __ | \ | |   ___  | |_  / ___|  (_)  _ __ ___  
- | | | |  / _` | \ \ / / |  \| |  / _ \ | __| \___ \  | | | '_ ` _ \ 
- | |_| | | (_| |  \ V /  | |\  | |  __/ | |_   ___) | | | | | | | | |
-  \___/   \__,_|   \_/   |_| \_|  \___|  \__| |____/  |_| |_| |_| |_|
-                                                                                                                                                                                                                                                                                           
-"""
 
 if __name__ == "__main__":
     # Simulation setup
