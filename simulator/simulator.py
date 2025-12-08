@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from phy.channel_create import create_channel
 from phy.tech_profiles import wifi_direct
 from entities.drone import Drone
-from entities.obstacle import SphericalObstacle, CubeObstacle
 from simulator.metrics import Metrics
 from mobility import start_coords
 from path_planning.astar import astar
