@@ -56,6 +56,47 @@ class RouteTable:
 
     def get_route(self, dest):
         return self.table.get(dest)
+    
+    #############
+    def get_path(self, dst_id):
+        """
+        Reconstruct the full next-hop path to dst_id.
+
+        Returns:
+            list of drone IDs in hop order, e.g. [src, n1, n2, ..., dst]
+            or None if no valid path exists.
+        """
+        
+        # Start from this drone
+        path = [self.my_drone.identifier]
+        current = self.my_drone.identifier
+        visited = set([current])
+
+        while current != dst_id:
+            entry = self.get_route(dst_id if current == self.my_drone.identifier else current)
+
+            # No route?
+            if entry is None:
+                return None
+            
+            next_hop = entry.get('next_hop', None)
+            if next_hop is None:
+                return None
+
+            # Avoid loops
+            if next_hop in visited:
+                return None
+
+            # Add to path
+            path.append(next_hop)
+            visited.add(next_hop)
+
+            # Move to next hop
+            current = next_hop
+
+        return path
+            
+    #############
 
     def invalidate_routes_through(self, next_hop):
         to_delete = [d for d,entry in self.table.items() if entry.get('next_hop') == next_hop]

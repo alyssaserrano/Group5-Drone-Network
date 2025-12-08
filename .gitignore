@@ -8,6 +8,8 @@ __pycache__
 *.log
 *.gif
 .vscode/
+.vscode/
 venv/
 .vscode//UAV_venv/
 .venv/
+venv/

@@ -76,6 +76,10 @@ class Drone:
         self.identifier = node_id
         self.coords = coords
         self.start_coords = coords
+        
+        ####
+        self.target_coords = coords
+        ####
 
         self.rng_drone = random.Random(self.identifier + self.simulator.seed)
 
@@ -103,6 +107,10 @@ class Drone:
         self.mac_process_finish = dict()
         self.mac_process_count = 0
         self.enable_blocking = 1  # enable "stop-and-wait" protocol
+        
+        ###
+        self.residual_energy = config.INITIAL_ENERGY
+        ###
 
         ###################### Added by Networks Group #############################
         # self.routing_protocol = Dsdv(self.simulator, self)
@@ -110,9 +118,25 @@ class Drone:
         self.routing_protocol = Olsr(self.simulator, self)
         # from routing.aodv.aodv import Aodv
         # self.routing_protocol = Aodv(self.simulator, self)
+        self.routing = self.routing_protocol #Added GUI Team
         ############################################################################
 
-        self.mobility_model = GaussMarkov3D(self)
+        # self.mobility_model = GaussMarkov3D(self)
+        
+        ##### Mobility Team
+        # ---------------- mobility model selection ---------------- #
+        if config.MOBILITY_MODEL == "gauss_markov":
+            from mobility.gauss_markov_3d import GaussMarkov3D
+            self.mobility_model = GaussMarkov3D(self)
+
+        elif config.MOBILITY_MODEL == "leader_follower":
+            from mobility.leader_follower_3d import LeaderFollower3D
+            self.mobility_model = LeaderFollower3D(self)
+
+        else:
+            raise ValueError(f"Unknown MOBILITY_MODEL: {config.MOBILITY_MODEL}")
+        # -----------------------------------------------------------
+        
         # self.motion_controller = VfMotionController(self)
 
         self.energy_model = EnergyModel(self)
@@ -124,6 +148,15 @@ class Drone:
         self.env.process(self.generate_data_packet())
         self.env.process(self.feed_packet())
         self.env.process(self.receive())
+        
+        #The custom movement will fight with leaderfollower we disable when using leaderfollower
+        #self.env.process(self.move_toward_target()) Original 12/3/25
+        
+        #####
+        # Only activate manual formation movement when NOT using LeaderFollower
+        if config.MOBILITY_MODEL != "leader_follower":
+            self.env.process(self.move_toward_target())
+        #####
 
     def generate_data_packet(self, traffic_pattern='Poisson'):
         """
@@ -150,6 +183,8 @@ class Drone:
                     yield self.env.timeout(round(self.rng_drone.expovariate(rate) * 1e6))
 
                 config.GL_ID_DATA_PACKET += 1  # data packet id
+                print(f"[GEN] Drone {self.identifier} generated DATA packet {config.GL_ID_DATA_PACKET}")
+
 
                 # randomly choose a destination
                 all_candidate_list = [i for i in range(config.NUMBER_OF_DRONES)]
@@ -454,3 +489,45 @@ class Drone:
                 pass
 
         return flag, all_drones_send_to_me, time_span, potential_packet
+    
+#######################Ensures movement logic calls move_toward_target()
+    def set_target(self, coords):
+        """Set a new target coordinate for formation movement."""
+        self.target_coords = coords
+        
+    def move_toward_target(self):
+        """Gradually move drone toward its target coordinates."""
+        while True:
+            yield self.env.timeout(50000)  # move every 0.05s
+
+            if self.sleep:
+                continue
+
+            tx, ty, tz = self.target_coords
+            x, y, z = self.coords
+
+            # Compute direction vector
+            dx = tx - x
+            dy = ty - y
+            dz = tz - z
+
+            dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+
+            if dist < 1:
+                continue  # Already near target
+
+            # Normalize direction
+            ux = dx / dist
+            uy = dy / dist
+            uz = dz / dist
+
+            # Move with drone speed
+            step = self.speed * 0.05  # speed * dt
+
+            # Update coordinates
+            self.coords = [
+                x + ux * step,
+                y + uy * step,
+                z + uz * step
+            ]
+######################

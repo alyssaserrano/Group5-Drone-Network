@@ -191,3 +191,5 @@ class VfMotionController:
             ax.set_ylabel('y')
             ax.set_zlabel('z')
             plt.show()
+
+#testing

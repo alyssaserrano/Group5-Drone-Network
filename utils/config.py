@@ -14,6 +14,16 @@ STATIC_CASE = 0  # whether to simulate a static network
 HETEROGENEOUS = 0  # heterogeneous network support (in terms of speed)
 LOGGING_LEVEL = logging.INFO  # whether to print the detail information during simulation
 
+# ---------- Mobility Model/Speed Controls -----------#
+# MOBILITY_MODEL = "leader_follower"     # OR "gauss_markov"
+MOBILITY_MODEL = "gauss_markov"     # OR "gauss_markov"
+FORMATION_SWITCH_TIME = 300 * 1e6      # 300 seconds in μs
+
+SPEED_MODE = "low"     # options: "low", "medium", "high"
+SPEED_LOW = 5        # m/s
+SPEED_MEDIUM = 15    # m/s
+SPEED_HIGH = 40      # m/s
+
 # ---------- hardware parameters of drone (rotary-wing) -----------#
 PROFILE_DRAG_COEFFICIENT = 0.012
 AIR_DENSITY = 1.225  # kg/m^3
@@ -26,8 +36,8 @@ AIRCRAFT_WEIGHT = 100  # Newton
 ROTOR_BLADE_TIP_SPEED = 500
 MEAN_ROTOR_VELOCITY = 7.2  # mean rotor induced velocity in hover
 FUSELAGE_DRAG_RATIO = 0.3
-INITIAL_ENERGY = 20 * 1e3  # in joule
-ENERGY_THRESHOLD = 2000  # in joule
+INITIAL_ENERGY = 200 * 1e3  # in joule (Changed from 20 to 200) The flight energy model + TX energy model = too high for only 20 kj
+ENERGY_THRESHOLD = 20 * 1e3  # in joule (Changed from 2000 to 1e3)
 MAX_QUEUE_SIZE = 200  # maximum size of drone's queue
 
 # ----------------------- radio parameters ----------------------- #

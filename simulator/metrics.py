@@ -1,8 +1,7 @@
 import numpy as np
 from collections import defaultdict
 from openpyxl import load_workbook
-from simulator.log import logger
-
+# import logger
 
 class Metrics:
     """
@@ -53,6 +52,10 @@ class Metrics:
         self.mac_delay = []
 
         self.collision_num = 0
+        
+        #########
+        self.packet_routes = {}   # packet_id → [list of hops]
+        #########
 
     def calculate_metrics(self, received_packet):
         """Calculate the corresponding metrics when the destination receives a data packet successfully"""

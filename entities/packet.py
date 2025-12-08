@@ -91,6 +91,10 @@ class DataPacket(Packet):
 
         self.src_drone = src_drone
         self.dst_drone = dst_drone
+        
+        ######### This begins path as the source_id
+        self.path_history = [src_drone.identifier]
+        #########
 
         self.routing_path = None  # for centralized routing protocols
         self.next_hop_id = None  # next hop for this data packet

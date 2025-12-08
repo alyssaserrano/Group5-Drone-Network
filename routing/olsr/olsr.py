@@ -12,8 +12,12 @@ class Olsr:
         self.my_drone = my_drone
         self.rng_routing = random.Random(my_drone.identifier + simulator.seed + 10)
         self.table = OlsrRoutingTable(simulator.env, my_drone)
-        self.hello_interval = 0.4 * 1e6
-        self.tc_interval = 0.8 * 1e6
+        self.route = self.table #Added GUI Team 12/3/25
+        self.route_table = self.table #Optional for other code (GUI) 12/3/25
+        self.hello_interval = 0.4 * 1e6 #Original 12/3/25
+        self.tc_interval = 0.8 * 1e6 #Original 12/3/25
+        # self.hello_interval = 0.2 * 1e6 #New to match mobility speed
+        # self.tc_interval = 0.4 * 1e6 #New to match mobility speed
         self.simulator.env.process(self.broadcast_hello_periodically())
         self.simulator.env.process(self.broadcast_tc_periodically())
         self.simulator.env.process(self._purge_routes())
