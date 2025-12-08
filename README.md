@@ -1,380 +1,455 @@
-<div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/logo.png" width="650px">
-</div>
+# User Manual
 
-<div align="center">
-  <h1>UavNetSim-v1: A Python based Simulation Platform for UAV Communication Networks</h1>
+Group 5: Alyssa Serrano, Afnan Algharbi, Halie Do, Reiner Bondoc,
 
-  <img src="https://img.shields.io/badge/Github-%40Zihao--Felix--Zhou-blue" height="20">
-  <img src="https://img.shields.io/badge/License-MIT-brightgreen" height="20">
-  <img src="https://img.shields.io/badge/Version-V1.0-orange" height="20">
-  <img src="https://img.shields.io/badge/Contributions-Welcome-yellowgreen" height="20"> 
-  <a href="https://hellogithub.com/repository/Zihao-Felix-Zhou/UavNetSim-v1" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=51f926ec044046afb3ed23a912421445&claim_uid=yc7sS80jimthluU&theme=small" alt="Featured｜HelloGitHub" /></a>
+Cristian Carino, Evan Tardiff, Andrew-Jacob Santons, Sergio Fernandez
 
-  <h3>Make simulation more friendly to novices! </h3>
-</div>
+Donneys, Jahnavi Panchal
 
-Read this in other language: [中文](README_CHINESE.md)
+CS 576 - Computer Networks and Distributed Systems
 
-This Python-based simulation platform provides a realistic and comprehensive modeling of various components in UAV networks, including the network layer, MAC layer, physical layer, as well as UAV mobility and energy models. Moreover, the platform is highly extensible, allowing users to customize and develop their own protocols to suit diverse application requirements. <br>  
+Professor Umut Can Cabuk
 
-This repository corresponds to our following paper. In addition, we have also updated many new modules and baselines at present.
-> **[UavNetSim-v1: A Python-based Simulation Platform for UAV Communication Networks](https://arxiv.org/abs/2507.09852)** <br>
-> [Zihao Zhou](https://zihao-felix-zhou.github.io/)<sup>1</sup>, [Zipeng Dai](http://zipengdai.com/)<sup>2</sup>, Linyi Huang<sup>3</sup>, [Cui Yang](https://yanzhao.scut.edu.cn/open/ExpertInfo.aspx?zjbh=YBh67JO2Lu3MRcgZBW!y0g==)<sup>1</sup>, [Youjun Xiang](https://yanzhao.scut.edu.cn/open/ExpertInfo.aspx?zjbh=OqvoZ7Uc98hlRMLm8c2JGA==)<sup>1</sup>, [Jie Tang](https://yanzhao.scut.edu.cn/open/ExpertInfo.aspx?zjbh=jAxeXRUecjTAjkxrmc2Dnw==)<sup>1</sup> and [Kai-kit Wong](https://www.ee.ucl.ac.uk/~uceekwo/)<sup>4,5</sup> <br>
-> <sup>1</sup> School of Electronic and Information Engineering, South China University of Technology <br>
-> <sup>2</sup> Department of Computer Science and Technology, Beijing Institute of Technology <br>
-> <sup>3</sup> Thrust of ROAS, The Hong Kong University of Science and Technology (Guangzhou) <br>
-> <sup>4</sup> Department of Electrical and Electronic Engineering, University College London <br>
-> <sup>5</sup> Yonsei Frontier Lab, Yonsei University
+## Fall 2025
 
-<div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/Schematic_of_uav_swarms.png" width="1000px">
-</div>
 
-## Requirements
-- matplotlib==3.10.1
-- numpy==2.2.4
-- openpyxl==3.1.5
-- Pillow==11.2.1
-- scikit_opt==0.6.6
-- simpy==4.1.1
+## Table of Contents
 
-## Features
-Before you start your simulation journey, we recommend that you read this section first, in which some features of this platform are mentioned so that you can decide if this platform meets your development or research needs.
-- Python-based (this simulation platform is developed based on SimPy library in Python);
-- More suitable for the development and verification of **routing protocols**, **MAC protocols**, and **motion control algorithms** (e.g., **topology control**, **trajectory optimization**). In the future, we hope to improve the platform to support more kinds of algorithms and protocols at different layers;
-- Support **reinforcement learning (RL)** and other AI-based algorithms;
-- Easy to extend (1. **modular programming** is used, and users can easily add their own designed modules; 2. different application scenarios are possible, e.g., **flying ad-hoc networks (FANETs)**, **UAV-assisted data collection**, **air-ground integrated network**);
-- **Good visulization**, this platform can provide the visualization of **UAV flight trajectory** and **packet forwarding path**, which facilitates intuitive analysis of the behavior of protocols;
-- If you are engaged in UAV-assisted wireless communication systems and want to **consider more cross-layer metrics** (e.g., end-to-end delay, packet delivery ratio (PDR), throughput), then this platform is for you
+- 1. Introduction...................................................................................................
+   - 1.2 Features Implemented...........................................................................
+   - 1.3 How the Simulation Runs.........................................................................................
+- 2. System Requirements and Installations...........................................................................
+   - 2.1 Software Requirements............................................................................................
+   - 2.2 Hardware Requirements...........................................................................................
+- 3. Code structure and Files Overview..................................................................................
+   - 3.1 Codebase..................................................................................................................
+- 4. Testing and Evaluation.....................................................................................................
+   - 4.1 Testing Methodology................................................................................................
+   - 4.2 Testing Mobility vs Latency.....................................................................................
+      - 4.2.1 Scenario 1: Leader-Follower with AODV.......................................................
+      - 4.2.2 Testing Scenario 2: Leader-Follower with OLSR............................................
+      - 4.2.3 Scenario 3: Random Waypoint with AODV....................................................
+   - 4.3 Energy.....................................................................................................................
+      - 4.3.1 Throughput tradeoff: TX power levels vs lifetime/PDR...............................
+      - Tested with four drones:..........................................................................................
+      - 4.3.2 : AODV vs. OLSR.........................................................................................
+   - 4.4 Formation Transition..............................................................................................
+- 5. Statement of Work........................................................................................................
+- 6. Conclusion References...................................................................................................
 
-## Project structure
+
+## 1. Introduction...................................................................................................
+
+1.1 purpose of the Simulator
+Our project is a drone network simulation that communicates between four drones and forms a V
+or line alignment. Our work extends from that from a python-based drone simulator. With the
+accessible simulator we were able to implement all custom requirements of the Physical, MAC,
+Networks, mobility, and GUI expectations. This project aims to address the challenges in drone
+communication and focuses on the challenges of topology and formation of multiple drones in
+network communication. Users can configure:
+
+- which routing protocol to execute (AODV vs OLSR)
+- which mobility model to employ (e.g., Random Walk, Gaussian Markov, etc.)
+- what channel model to implement (Default Channel vs ProbChannel)
+- path planning and visualisation settings.
+The simulator is designed for students, educators, and researchers to evaluate, learn, and
+experiment with the effects of mobility, interference, and dynamics of wireless channel
+interactions (i.e., packet deliveries, collisions, and routing behaviors).
+
+### 1.2 Features Implemented...........................................................................
+
+1. Physical: The physical layer consists of both a WiFi-802.11n/ac and Wi-Fi Direct
+    connection. There is simulated probability loss and the power levels are defined for
+    TX/RX/idle/sleep/energy.
+2. MAC: The MAC layer manages reliable unicast communication using CSMA/CA with
+    p-persistent backoff for collision avoidance and an ACK/Retry mechanism with
+    exponential backoff for transmission reliability.
+3. Routing/Network: The network layer consists of the implementation of two protocols: a
+    reactive protocol, AODV (Ad hoc On-Demand Distance Vector) and a proactive protocol,
+    OLSR (Optimized Link State Routing Protocol). AODV is designed for on demand route
+    discovery while on the other hand, OLSR is designed for periodic HELLO/TC messaging
+    and proactively updated in the network.
+4. Mobility: The mobility layer defines how the drones move through the 3D simulation
+    space and directly shapes network connectivity over time. There are different mobility
+    models, including Gauss Markov 3D which it generates smooth, memory-based random
+    motion. There is a Random Walk 3D, where it changes directions at fixed intervals, and a
+    Random Waypoint 3D, where drones travel between randomly generated waypoints. Last,
+    the Leader follower/Formation mobility, where the leader navigates the map and
+    followers maintain structured offsets that can switch mid-sun. Each model updates drone
+
 
 ```
-.
-├── README.md
-├── allocation
-│   ├── central_controller.py
-│   └── channel_assignment.py
-├── energy
-│   └── energy_model.py
-├── entities
-│   ├── drone.py
-│   ├── obstacle.py
-│   └── packet.py
-├── mac
-│   ├── csma_ca.py
-│   └── pure_aloha.py
-├── mobility
-│   ├── gauss_markov_3d.py
-│   ├── random_walk_3d.py
-│   ├── random_waypoint_3d.py
-│   └── start_coords.py
-├── path_planning
-│   ├── astar
-│   │   └── astar.py
-├── phy
-│   ├── channel.py
-│   ├── large_scale_fading.py
-│   └── phy.py
-├── routing
-│   ├── dsdv
-│   │   ├── dsdv.py
-│   │   ├── dsdv_packet.py
-│   │   └── dsdv_routing_table.py
-│   ├── grad
-│   │   └── ...
-│   ├── greedy
-│   │   └── ...
-│   ├── opar
-│   │   └── ...
-│   └── q_routing
-│       └── ...
-├── simulator
-│   ├── metrics.py
-│   └── simulator.py
-├── topology
-│   └── virtual_force
-│       ├── vf_motion_control.py
-│       ├── vf_neighbor_table.py
-│       └── vf_packet.py
-├── utils
-│   ├── config.py
-│   ├── ieee_802_11.py
-│   └── util_function.py
-├── visualization
-│   ├── static_drawing.py
-│   └── visualizer.py
-└── main.py
+positions at fixed time steps, influencing path loss link availability, and routing churn
+while the system logs mobility topology changes to support experiments on formation
+transitions, stability, and overall network performance.
 ```
-The entry point of this project is the ```main.py``` file, we can even run it directly with one click to get a sneak peek, however, we recommend that you first read this section to understand the modular composition of this simulation platform and the corresponding function.
+5. GUI & Visualization: This layer consists of an interactive 3d visualization of the
+    simulation area that displays all drones, their current positions, and the link relationships
+    in real time. The interface provides play/pause and reset controls, as well as a time slider
+    to go through the simulation timeline. Each drone is annotated with its ID, a battery bar,
+    and a queue-size indicator to show how busy it is. The side panels display live metrics
+    such as PDR, latency, jitter, routing overhead, and per-drone statistics, with options to
+    export plots and raw data to PNG/CSV for later analysis.
+6. Experiments: We conducted experiments using different mobilities and routing protocols
+    and collected the appropriate metrics. A section in this manual is dedicated to discuss
+    them.
 
-- ```allocation```: this package includes modules for various resource allocation algorithms, e.g., sub-channel assignment schemes. Power allocation can be implemented as future work.
-- ```energy```: this package includes the drone's energy model, covering both flight and communication-related energy consumption.
-- ```entities```: it encompasses all modules corresponding to the primary entities involved in the simulation.
-- ```mac```: it includes the implementations of different medium access control protocols.
-- ```mobility```: it contains different 3-D mobility models of drones.
-- ```path_planning```: this package includes modules for different 3D path planning algorithms (e.g., A*) for drone.
-- ```phy```: it mainly includes the modeling of wireless channels in the physical layer, and the definition of unicast, broadcast, and multicast.
-- ```routing```: it includes implementations of various routing protocols.
-- ```simulator```: it comprises all the classes necessary for conducting the simulation and evaluating network performance metrics.
-- ```topology```: this package includes modules for various topology control algorithms for UAV swarm.
-- ```utils```: it contains the key configuration parameters and some useful functions.
-- ```visualization```: it can provide visualization of the distribution of drones, flight trajectory and the packet forwarding paths.
+### 1.3 How the Simulation Runs.........................................................................................
 
-| Layer | Currently implemented protocols, algorithms or models |
-| --- | --- |
-| Application layer | Uniform distribution for data packet arrival <br> Poisson distribution for data packet arrival |
-| Transport layer | Automatic repeat request (ARQ) |
-| Network layer | Routing protocols: <br> <ul><li>[DSDV: Destination-Sequenced Distance-Vector routing](https://dl.acm.org/doi/abs/10.1145/190809.190336)</li> <li>[GRAd: Gradient Routing in Ad Hoc Networks](www.media.mit.edu/pia/Research/ESP/texts/poorieeepaper.pdf)</li> <li>[Greedy forwarding](https://en.wikipedia.org/wiki/Geographic_routing)</li> <li>[OPAR: Optimized Predictive and Adaptive Routing](https://ieeexplore.ieee.org/abstract/document/9484489)</li> <li>[Q-FANET: Improved Q-learning based Routing Protocol for FANETs](https://www.sciencedirect.com/science/article/abs/pii/S1389128621003595)</li> <li>[QMR: Q-learning based Multi-objective optimization Routing](https://hal.science/hal-02970649v1/document)</li> <li>[QGeo: Q-learning-based Geographic routing](https://ieeexplore.ieee.org/abstract/document/7829268/)</li> <li>[Classical Q-Routing](https://proceedings.neurips.cc/paper/1993/hash/4ea06fbc83cdd0a06020c35d50e1e89a-Abstract.html)</li></ul>|
-| Topology control layer | Random mobility models: <br> <ul><li>[3D Gauss-Markov mobility model](https://repository.arizona.edu/bitstream/handle/10150/604297/ITC_2010_10-03-06.pdf?sequence=1&isAllowed=y)</li><li>[3D Random Waypoint mobility model](https://ieeexplore.ieee.org/document/8671460)</li><li>[3D Random Walk mobility model](https://link.springer.com/chapter/10.1007/978-1-4419-6050-4_3#citeas)</li></ul> Topology control algorithms: <br> <ul><li>[Virtual force-based topology control](https://ieeexplore.ieee.org/document/5555924)</li></ul> Path planning and obstacle avoidance algorithms: <br> <ul><li>A* 3D path planning</li></ul>|
-| Medium access control layer |<ul><li>[CSMA/CA: Carrier-Sense Multiple Access with Collision Avoidance](https://en.wikipedia.org/wiki/Carrier-sense_multiple_access_with_collision_avoidance)</li> <li>[Pure ALOHA](https://www.tutorialspoint.com/data_communication_computer_network/pure_aloha.htm)</li></ul>|
-| Physical layer | The characteristics in physical layer that taken into account: <br> <ul><li>Line-of-Sight (LoS) channel</li> <li>Probabilistic Line-of-Sight (LoS) channel</li> <li>Packet collisions and signal interference</li> <li>Unicast, multicast and broadcast</li></ul> |
+Step 1 - Running main.py:
+main.py is responsible for activating the whole simulation. Through running it, the SimPy
+environment is created, the simulator is initialized and so are the drones. Then the mobility
+model gets assigned, alongside the routing protocol and channel type.
 
-## Installation and usage
-Firstly, download this project:
+Step 2 - Running of the simulation:
+In the background, Simpy executes the drone mobility updates, routing processes, CSMA/CA
+backoff and channel sensing, any PHY transmissions, and packet delivery transmissions
+including retransmissions after ACK timeout and any metrics updates.
+
+Step 3 - Visualization:
+At the end of the run, the user will be able to view the compiled positions and communication
+logs generated, a GIF animation of the scene and an interactive UI as shown below.
+
+
+## 2. System Requirements and Installations...........................................................................
+
+This section specifies software requirements necessary to install and execute simulator
+applications. The simulator utilizes Python, which allows it to be fast and able to run on any
+operating system (OS) with no hardware constraints because of its use of SimPy and scientific
+computing tools.
+
+### 2.1 Software Requirements............................................................................................
+
+- Python 3.10 or 3.
+- Required Python Packages:
+    - Simpy
+    - Numpy
+    - Matplotlib
+    - Pillow
+    - mpl_toolkits.plot3d
+- Recommended platform:
+    - Linux (Ubuntu 20.04 / 22.04)
+    - macOS also works
+    - Windows + WSL supported
+
+
+### 2.2 Hardware Requirements
+
+This simulator is not heavy computationally, however the visualizations and long duration
+simulations will produce hundreds of frames requiring the minimum dual-core CPu and 4 GB
+RAM.
+
+## 3. Code structure and Files Overview..................................................................................
+
+This section describes how the simulator project is structured and what the main files do. The
+organization of the folders makes it easy for new users to find the routing logic, mobility models,
+visualization modules, channel behavior, and simulator configuration for the simulation project.
+
+### 3.1 Codebase..................................................................................................................
+
 ```
-git clone https://github.com/Zihao-Felix-Zhou/UavNetSim-v1.git
-```
-Run ```main.py``` to start the simulation. 
-
-## Core logic
-The following figure shows the main procedure of packet transmissions in *UavNetSim*. "Drone's buffer" is a resource in SimPy whose capacity is one, which means that the drone can send at most one packet at a time. If there are many packets that need to be transmitted, they need to queue for buffer resources according to the time order of arrival to the drone. We can simulate the queuing delay by this mechanism. Besides, we note that there are two other containers: ```transmitting_queue``` and ```waiting_list```, for all the "data packets" and "control packets" generated by the drone itself or received from other drones but need to be further forwarded, the drone will first put them into the ```transmitting_queue```. A function called ```feed_packet``` will periodically read the packet at the head of the ```transmitting_queue``` every very short time, and let it wait for the ```buffer``` resource. It should be noted that the "ACK packet" waits for the buffer resource directly without being put into the ```transmitting_queue```.
-
-After the packet is read, a packet type determination will be performed first. If this packet is a control packet (usually no need to decide the next hop), then it will directly start to wait for the buffer resource. When this packet is a data packet, next hop selection will be executed by the routing protocol, if an appropriate next hop can be found, then this data packet can start waiting for buffer resource, otherwise, this data packet will be put into ```waiting_list```. Once the drone has the relevant routing information, it will take this data packet from "waiting_list" and add it back to ```transmitting_queue```.
-
-When the packet gets the buffer resource, MAC protocol will be performed to contend (or schedule) for the wireless channel. When the packet is successfully received by other drone, packet type determination also needs to be performed. For example, if the received packet is a data packet, an ACK packet is needed to reply after an SIFS time. In addition, if the receiver is the destination of the incoming data packet, some metrics will be recorded (PDR, end-to-end delay, etc.), otherwise, it means that this data packet needs to be further relayed so it will be put into the ```transmitting_queue``` of the receiver drone.
-
-<div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/transmitting_procedure.png" width="700px">
-</div>
-
-## Module overview
-### Routing protocol
-Packet routing plays an important role in UAV networks, which enables cooperation among different UAV nodes. In this project, **Greedy routing**, **Gradient routing (GRAd)**, **Destination-Sequenced Distance Vector routing (DSDV)**, and some **RL-based routing protocols** have been implemented. The following figure illustrates the basic procedure of packet routing. More detailed information can be found in the corresponding papers [1]-[5].
-
-<div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/routing.png" width="700px">
-</div>
-
-### Media access control (MAC) protocol
-In this project, **basic Carrier-sense multiple access with collision avoidance (CSMA/CA)** and **Pure aloha** have been implemented. I will give a brief overview of the version implemented in this project, and focus on how signal interference and collision are implemented in this project. The following picture shows an example of packet transmission when the basic CSMA/CA (without RTS/CTS) protocol is adopted. When a drone wants to transmit a packet:
-
-1. it first needs to wait until the channel is idle
-2. when the channel is idle, the drone starts a timer and waits for ```DIFS+backoff``` periods of time, where the length of backoff is related to the number of re-transmissions
-3. if the entire decrement of the timer to 0 is not interrupted, then the drone can occupy the channel and start sending the packet
-4. if the countdown is interrupted, it means that the drone loses the game. The drone then freezes the timer and waits for the channel to be idle again before re-starting its timer
-
-<div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/csmaca.png" width="800px">
-</div>
-
-The following figure demonstrates the packet transmission flow when pure aloha is adopted. When a drone installed a pure aloha protocol wants to transmit a packet:
-
-1. it just sends it, without listening to the channel and random backoff
-2. after sending the packet, the node starts to wait for the ACK packet
-3. if it receives ACK in time, the ```mac_send``` process will finish
-4. if not, the node will wait a random amount of time, according to the number of re-transmission attempts, and then send the packet again
-
-<div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/pure_aloha.png" width="800px">
-</div>
-
-From the above illustration, we can see that, it is not only two drones sending packets simultaneously that cause packet collisions. If there is an overlap in the transmission time of two data packets, it also indicates that a collision occurs. So in our project, each drone checks its inbox every very short interval and has several important things to do (as shown in the following figure):
-
-1. delete the packet records in its inbox whose distance from the current time is greater than twice the maximum packet transmission delay. This reduces computational overhead because these packets are guaranteed to have already been processed and will not interfere with packets that have not yet been processed
-2. check the packet records in the inbox to see which packet has been transmitted in its entirety
-3. if there is such a record, then find other packets that overlap with this packet in transmission time in the inbox records of all drones, and use them to calculate SINR.
-
-<div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/reception_logic.png" width="800px">
-</div>
-
-### Mobility model
-The mobility model is one of the most important mudules to show the characteristics of a UAV network more realistically. In this project, **Gauss-Markov 3D mobility model**, **Random Walk 3D mobility model**, and **Random Waypoint 3D mobility model** have been implemented. Specifically, since it is quite difficult to achieve continuous movement of drones in discrete time simulation, we set a ```position_update_interval``` to update the positions of drones periodically, that is, it is assumed that the drone moves continuously within this time interval. If the time interval ```position_update_interval``` is smaller, the simulation accuracy will be higher, but the corresponding simulation time will be longer. Thus, there will be a trade-off. The trajectories of a single drone within 100 seconds of the simulation under the three mobility models are shown as follows:
-
-<div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/mobility_model.png" width="700px">
-</div>
-
-### 3D Path planning
-Our UavNetSim-v1 platform now supports the design and test of the 3-D path planning algorithms for drone. The baseline we have implemented so far is the A* algorithm, subsequently, we will continue to expand the baselines, such as Dijkstra, DFS, BFS, DRL-based path planning, etc.
-
-<div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/a_star_path_planning.png" width="700px">
-</div>
-
-How to use? If you want to add obstacles into the environment, go to ```simulator/simulator.py```:
-```python
-from entities.obstacle import SphericalObstacle, CubeObstacle
-
-...
-
-self.grid = grid_map()
-self.obstacle_type = set()
-
-# create spherical obstacle
-num_of_spherical_obst = 2
-center_list_so = [[200, 100, 30], [50, 10, 5]]
-radius_list_so = [30, 10]
-for i in range(num_of_spherical_obst):
-    obst = SphericalObstacle(center_list_so[i], radius_list_so[i])
-    obst.add_to_grid(self.grid)
-    self.obstacle_type.add(obst.id)
-
-# create cube obstacle
-number_of_cube_obst = 3
-center_list_co = [[50,50,1], [100,60,1],[160,96,1]]
-length_list_co = [30, 10, 15]
-width_list_co = [15, 15, 20]
-height_list_co = [10, 20, 30]
-for j in range(number_of_cube_obst):
-    obst = CubeObstacle(center_list[j], length_list_co[j], width_list_co[j], height_list_co[j])
-    obst.add_to_grid(self.grid)
-    self.obstacle_type.add(obst.id)
+1) Download or clone the repository: Group5-Drone-Network.git
+2) Ensure the folders contain the files mentioned below
+3) To ensure the correct version of python packages are being using, create a virtual
+environment
+4) Install the dependencies in requirements.txt
+5) Once the installation is complete, you may run main.py and do the following:
+a) alter the number of drones, mobility model, and channel selection.
+b) Enable visualization
+c) Alter the simulation time
+6) You can manipulate drone.py to run the simulation with different protocols
 ```
 
-After adding the obstacles, each drone can call the path planning algorithm to determine its optimal path (go to ```entities/drone.py```):  
-```python
-from path_planning.astar import astar  # NOTE: REMEMBER TO IMPORT THE CORRESPONDING MODULE
-from path_planning.path_following_3d import PathFollowing3D
-from visualization.static_drawing import scatter_plot_with_obstacles
 
-...
+## 4. Testing and Evaluation.....................................................................................................
 
-class Drone:
-    ...
+This section will present results from research which has been conducted using the Network
+Simulator as part of several different scenarios using various routing protocols, mobility models
+and channel conditions. The goal of this section is to demonstrate that the Network Simulator
+produces results that are consistent with those expectations, providing insight into the
+performance of the network simulator and helping determine how scalable the network simulator
+is.
 
-    path = astar.a_star_3d(self.start_coords, end_pos, self.simulator.grid)
-    scatter_plot_with_obstacles(self.simulator, self.simulator.grid, [path])  # optional
 
-    # the mobility model
-    self.mobility_model = PathFollowing3D(self, path)
+### 4.1 Testing Methodology................................................................................................
 
-    ...
+Each experiment involved a variation of the following parameters
+
+- Drones count: 5, 25, 100
+- Routing protocol: AODV or OLSR
+- Mobility model: Leader-Follower, Random Walk, Random Waypoint
+- Channel: Ideal or probabilistic
+- Transmission power: Low, Medium, High
+- Simulation time: varies depending on routing stabilization
+- Packet type: fixed or random source
+- Evaluation metrics:
+    - Packet Delivery Ratio (PDR)
+    - End-to-End delay
+    - MAC collision count
+    - Routing load (AKA control overhead)
+    - Throughput
+    - Energy Consumption
+
+### 4.2 Testing Mobility vs Latency.....................................................................................
+
+4.2.1 Scenario 1: Leader-Follower with AODV
+
+With 5 drones:
+Resulted in PDR ~ 89% and a latency of ~ 520 ms with few collisions of 46 and stable
+
+connectivity.
+
+
+With 25 drones:
+Resulted in PDR ~ 30% and a latency of ~ 6900 ms with routing load ~9.8 and 1700+
+collisions.
+
+With 100 drones:
+Resulted in PDR ~ 6-7% and a latency of ~ 4500 ms with few collisions of 62K and Routing
+load of 50
+
+
+4.2.2 Testing Scenario 2: Leader-Follower with OLSR
+
+With 5 drones:
+Resulted in PDR ~ 99% and a latency of ~ 277 ms with routing load ~0.79 and 40 collisions.
+
+With 25 drones:
+Resulted in PDR ~34% and a latency of ~ 7880 ms with routing load ~2.70 and 2250+
+collisions.
+
+
+With 100 drones:172K and Routing load of 16.
+
+4.2.3 Scenario 3: Random Waypoint with AODV
+
+With 5 drones:
+
+Resulted in PDR ~ 58% and a latency of ~ 1300 ms with routing load ~14 and 52 collisions.
+
+
+With 25 drones:
+
+Resulted in PDR ~ 13-14% and a latency of ~ 5500 ms with routing load ~38 and 2300
+
+collisions.
+
+With 100 drones:
+
+
+Resulted in PDR ~ 3.7% and a latency of ~ 8000 ms with routing load ~116 and 113K
+
+collisions.
+
+Evidence from the evaluation suggests that a key factor of network performance is the mobility
+structure. With the Leader-Follower model, the drones maintain predictable formations. The
+result is that stable links are created and routing disruptions are minimalised, thus the routing
+protocols can perform efficiently. Conversely, with the Random Waypoint model, links are
+continuously severed due to the unpredictable movement patterns of the nodes. The result is
+frequent flooding of the AODV routing protocol and severe routing instability. The scalability
+testing results also indicate that while both models are impacted negatively as node count
+increases, they fail for different reasons: whilst the Leader-Follower model fails primarily due to
+MAC contention at high density, the Random Waypoint model fails as a result of a combination
+of route churn caused by movement and increased contention. The latency behaviour is similar:
+for the Leader-Follower model, most of the latency is caused by queue build-up, while for the
+Random Waypoint model, much of the latency is due to the repeated retransmissions during the
+route discovery process and queue overflow. Collision behaviours differ significantly: collisions
+in the Leader-Follower model increase almost linearly with density, whereas in the Random
+Waypoint model, they increase exponentially with density, due to the increased number of
+control packets needed as a result of frequently severed routes. Overall, at every tested scale, the
+Leader-Follower mobility structure out-performs the Random Waypoint mobility structure
+because the Leader-Follower model maintains connectivity, has minimal routing instability, and
+requires less control overhead than the Random Waypoint model.
+
+
+### 4.3 Energy.....................................................................................................................
+
+4.3.1 Throughput tradeoff: TX power levels vs lifetime/PDR
+
+Tested with four drones:
+
 ```
-After running the ```scatter_plot_with_obstacles``` function, you will get the figure showing the path and the obstacles, as shown in the above picture.
-
-### Energy model
-The energy model of our platform is based on the work of Y. Zeng, et al [8]. The figure below shows the power required for different drone flying speeds. The energy consumption is equal to the power multiplied by the flight time at this speed.
-<div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/energy_model.png" width="400px">
-</div>
-
-### Motion control
-This platform also supports user to design motion control algorithms for UAV swarm network. In the current version, a virtual force based motion control algorithm[9] is implemented, which incorporates the attractive force from the central point of the region and the repulsive force from neighbor drones. By applying this algorithm, an initial and possibly disconnected network can be self organized into a bi-connected network. The figure above demonstrates the changes of the network topology after motion control. 
-<div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/virtual_force.png" width="800px">
-</div>
-
-How to use? In ```entities/drone.py```, replace the ```mobility_model``` with ```motion_controller```:
-```python
-from topology.virtual_force.vf_motion_control import VfMotionController
-
-class Drone:
-  def __init__(self, env, node_id, coords, speed, inbox, simulator):
-    ...
-    # self.mobility_model = GaussMarkov3D(self)  REMEMBER TO COMMENT THIS SENTENCE OUT!
-    self.motion_controller = VfMotionController(self)
-    ...
+TX Power PDR % Avg Delay (ms) Throughput
+(kbps)
 ```
-
-### Visualization
-The platform supports interactive visualization of the packet transmission process, as well as the flying trajectories of drones. Here, I would like to thank @superboySB (Dr. Zipeng Dai) for contributing to this feature!
-
-<div align="center">
-<img src="https://github.com/Zihao-Felix-Zhou/UavNetSim-v1/blob/master/img/visualization.gif" width="900px">
-</div>
-
-One can enable visualization in ```main.py``` as:
-```python
-import simpy
-from utils import config
-from simulator.simulator import Simulator
-from visualization.visualizer import SimulationVisualizer
-
-if __name__ == "__main__":
-    # Simulation setup
-    env = simpy.Environment()
-    channel_states = {i: simpy.Resource(env, capacity=1) for i in range(config.NUMBER_OF_DRONES)}
-    sim = Simulator(seed=2025, env=env, channel_states=channel_states, n_drones=config.NUMBER_OF_DRONES)
-    
-    # Add the visualizer to the simulator
-    # Use 20000 microseconds (0.02s) as the visualization frame interval
-    visualizer = SimulationVisualizer(sim, output_dir=".", vis_frame_interval=20000)
-    visualizer.run_visualization()
-
-    # Run simulation
-    env.run(until=config.SIM_TIME)
-    
-    # Finalize visualization
-    visualizer.finalize()
 ```
-In the current version of this project, when user run ```main.py```, the program will display a plot of the initial position distribution of the drones, then close the window and the program will keep running. When the simulation is over, the flight trajectory of one drone and the final locations of the drones will be displayed, close these windows and wait for a while, the interactive window will be displayed.
-
-## Performance evaluation
-Our "UavNetSim-v1" platform supports the evaluation of several performance metrics, as follows:
-
-- **Packet Delivery Ratio (PDR)**: PDR is the ratio of the total number of received data packets successfully at all destination drones over the total number of data packets generated by all source drones. It should be noted that PDR excludes redundant data packets. PDR can reflect the reliability of the routing protocol.
-- **Average End-to-End Delay (E2E Delay)**: E2E delay is the average time delay for data packets to reach from the source drone to the destination drone. Typically, delay in packet transmission involves "queuing delay", "access delay", "transmission delay", "propagation delay (So small as to be negligible)" and "processing delay".
-- **Normalized Routing Load (NRL)**: NRL is the ratio of all routing control packets sent by all drones to the number of received data packets at the destination drones.
-- **Average Throughput**: In our platform, the calculation of throughput is: whenever the destination receives a packet, the length of the packet is divided by the end-to-end delay of the packet (because E2E delay involves the re-transmissions of this data packet)
-- **Hop Count**: Hop count is the number of router output ports through which the packet should pass.
-
-## Design your own protocol
-Our simulation platform can be expanded based on your research needs, including designing your own mobility model of drones (in ```mobility``` folder), mac protocol (in ```mac```folder), routing protocol (in ```routing```folder), and so on. Next, we take routing protocols as an example to introduce how users can design their own algorithms.
-
- * Create a new package under the ```routing``` folder (Don't forget to add ```__init__.py```)
- * The main program of the routing protocol must contain the function: ```def next_hop_selection(self, packet)``` and ```def packet_reception(self, packet, src_drone_id)```
- * After confirming that the code logic is correct, you can import the module you designed in ```drone.py``` and install the routing module on the drone:
-   ```python
-   from routing.dsdv.dsdv import Dsdv  # import your module
-   ...
-   class Drone:
-     def __init__(self, env, node_id, coords, speed, inbox, simulator):
-       ...
-       self.routing_protocol = Dsdv(self.simulator, self)  # install
-       ...
-   ```
-
-## Reference
-[1] C. Perkins and P. Bhagwat, "[Highly dynamic destination-sequenced distance-vector routing (DSDV) for mobile computers](https://dl.acm.org/doi/abs/10.1145/190809.190336)," in *ACM SIGCOMM Computer Communication Review*, vol. 24, no. 4, pp. 234-244, 1994.  
-[2] R. Poor, "Gradient routing in ad hoc networks", 2000, [www.media.mit.edu/pia/Research/ESP/texts/poorieeepaper.pdf](www.media.mit.edu/pia/Research/ESP/texts/poorieeepaper.pdf)  
-[3] J. Boyan and M. Littman, "[Packet routing in dynamically changing networks: A reinforcement learning approach](https://proceedings.neurips.cc/paper/1993/hash/4ea06fbc83cdd0a06020c35d50e1e89a-Abstract.html)" in *Advances in Neural Information Processing Systems*, vol. 6, 1993.  
-[4] W. S. Jung, J. Yim and Y. B. Ko, "[QGeo: Q-learning-based geographic ad hoc routing protocol for unmanned robotic networks](https://ieeexplore.ieee.org/abstract/document/7829268/)," in *IEEE Communications Letters*, vol. 21, no. 10, pp. 2258-2261, 2017.  
-[5] M. Gharib, F. Afghah and E. Bentley, "[Opar: Optimized predictive and adaptive routing for cooperative uav networks](https://ieeexplore.ieee.org/abstract/document/9484489)," in *IEEE INFOCOM 2021-IEEE Conference on Computer Communications Workshops (INFOCOM WKSHPS)*, pp. 1-6, 2021.  
-[6] A. Colvin, "[CSMA with collision avoidance](cn.overleaf.com/project/678e52bd44cc7c6c70e39d90)," *Computer Communications*, vol. 6, no. 5, pp. 227-235, 1983.  
-[7] N. Abramson, "[The ALOHA system: Another alternative for computer communications](n.overleaf.com/project/678e52bd44cc7c6c70e39d90)," in *Proceedings of the November 17-19, 1970, Fall Joint Computer Conference*, pp. 281-285, 1970.  
-[8] Y. Zeng, J. Xu and R. Zhang, "[Energy minimization for wireless communication with rotary-wing UAV](https://ieeexplore.ieee.org/document/8663615)," in *IEEE transactions on wireless communications*, vol. 18, no. 4, pp. 2329-2345, 2019.  
-[9] H. Liu, X. Chu, Y. -W. Leung and R. Du, "[Simple movement control algorithm for bi-connectivity in robotic sensor networks](https://ieeexplore.ieee.org/document/5555924)," in *IEEE Journal on Selected Areas in Communications*, vol. 28, no. 7, pp. 994-1005, 2010.
-
-## Contributing
-Contributions are warmly welcome! 
-
-## Citation
-If you find our paper useful, please kindly cite us via:
+Collisions Final Energy
 ```
-@inproceedings{zhou2025uavnetsim,
-    title={UavNetSim-v1: A Python-based Simulation Platform for UAV Communication Networks},
-    author={Zhou, Zihao and Dai, Zipeng and Huang, Linyi and Yang, Cui and Xiang, Youjun and Tang, Jie and Wong, Kai-kit},
-    booktitle={14-th IEEE/CIC International Conference on Communications in China},
-    address = {Shanghai, China},
-    month = {August},
-    year = {2025}
-}
 ```
-or   
+Low 98.49 95.79 573.72 26 123124.
 ```
-@article{zhou2025uavnetsim,
-  title={UavNetSim-v1: A Python-based Simulation Platform for UAV Communication Networks},
-  author={Zhou, Zihao and Dai, Zipeng and Huang, Linyi and Yang, Cui and Xiang, Youjun and Tang, Jie and Wong, Kai-kit},
-  journal={arXiv preprint arXiv:2507.09852},
-  year={2025}
-}
 ```
+Medium 97.99 103.39 507.84 21 123124.
+```
+```
+High 99.83 91.65 532.92 13 123124.
+```
+Experiments performed to investigate three different modes of transmission power reveal
+that the reliability remained very high with each mode set above a PDR rate of 97%. The
 
-## Show your support
-Give a ⭐ if this project helped you! 
+mode supplying high power delivered the highest PDR at approximately 99.8%.
+However, the improvement compared with the modes supplying low and medium power
+were fairly small, since the very reliable performance of the four-node topology produced
+a high probability of delivery. For the parameters of end-to-end delay and throughput, the
+mode supplying the higher power produced only a modest benefit by reducing end-to-end
 
-## License
-This project is MIT-licensed.
+delay from an average of 96-103 ms at low and medium transmission power levels down
+to approximately 91 ms for the higher power level. At the same time, throughput levels
+were relatively constant at around 500-570 Kbps for all three modes of transmission
+power. Medium power had the highest average end-to-end delay and the lowest average
+throughput when compared with other modes of transmission power. This was an
+
+indicator that the link was less robust and there was slightly more contention when using
+medium power versus higher transmission power configurations. The expected trend
+regarding the number of collisions occurred as anticipated; the average number of
+collisions per packet decreased as transmission power increased from low to high levels
+of transmission power: average of 26 collisions during low power vs. 21 collisions during
+medium power vs. 13 collisions for high power transmission. In a four-node topology,
+
+increased transmission power enhances the quality of the received signal and improves
+the SNR associated with the original transmitted signal. This results in reduced numbers
+of retransmissions and enhanced MAC-layer performance even though the
+communication range was increased.
+
+
+Results from the energy consumption analysis indicate that all transmissions across low,
+
+medium and high power settings used up to the same amount of energy at the end of the
+30-second test. Since this test lasted such a short period, the energy consumed to send and
+receive packets only represents a very small percentage of the original battery/energy
+levels available on the drone. There was essentially no difference in total energy used
+during the test due to deploying transmission power from 5 dBm to 20 dBm. Therefore,
+for short time periods, with few packets being transmitted, the overall effect of changing
+
+the effective transmission power on the lifetime of a node is negligible.
+
+4.3.2 : AODV vs. OLSR
+
+OLSR and AODV exhibit excellent performance within smaller areas which contain five
+drones. OLSR enables route stability across all nodes throughout the network due to its
+proactive link-state update mechanism, while AODV supports reduced per-packet latency
+
+because of the lack of control messages required for transmission of low-volume traffic.
+When extending the drone footprint to twenty-five, both routing protocols start seeing
+degradation; however, AODV performs significantly better than OLSR related to
+congestion control. OLSR specifically undergoes an increase in MAC contention due to
+the implementation of periodic control floods, which will only increase as the
+
+environment becomes denser. OLSR fails first at a total of one hundred drones because of
+exponential growth with regards to routing table overhead and channel congestion,
+ultimately resulting in severe collision cascades. AODV fails at this same number of total
+drones due to being inundated with broadcast storms of RREQ messages and
+overwhelming router queues caused by rapid changes in link state due to mobile nodes.
+
+Overall, AODV demonstrated a more resilient routing protocol for use in high mobility
+UAV networks, while OLSR was found to be useful only in small-stable environments
+for ten or fewer drones because of its proactive routing capabilities.
+
+The experiments showed that increasing transmission power will increase the reliability
+and reduce the latency slightly but will not significantly impact the overall energy usage
+
+of a drone network with a maximum distance between nodes of approximately 10m and a
+very short (30 second) duration. For short missions with few nodes, using a transmission
+power mode that is greater than the minimum recommended or "safe" level is a good
+practice since it will provide a high level of reliability and not negatively impact the
+overall battery life of the drone network; however, in larger networks or longer missions,
+
+the energy-throughput tradeoff will be much greater than what was experienced for this
+smaller experiment.
+
+
+### 4.4 Formation Transition..............................................................................................
+
+Testing with five drones:
+
+Before the Switch (t ≈ 13s): At the prior to formation change, all drones' connections are
+established. There was no packet loss (PDR = 100%); both latency and jitter levels were
+maintained at acceptable limits, while transmission queues were rarely used, thus
+indicating that the network has now converged and that routing has reached a point of
+
+stability and balance in operations.
+
+During the Switch (t = 15s):
+Drones begin to relocate after the topology is altered, thus causing the existing network
+links (connections) to break. AODV will react by transmitting new route requests
+
+
+(RREQ) and route responses (RREP) through the network, thus increasing the control
+overhead on the entire network yet again. The result of these activities will be a
+
+short-term decrease in PDR (packet delivery ratio) to 0.98. Additionally, the latency will
+increase to approximately 124 milliseconds (ms), and there will be an increase in jitter as
+well as a queue for the packets that are waiting to be delivered via the newly formed
+pathways. These types of changes in operating characteristics are not unexpected
+following abrupt topology changes because the routing protocol must take time to
+re-establish stable routes.
+
+After the Switch (t = 20s): Subsequent to establishing their new formation, the routing
+protocol for the drones stabilises once again but network performance does not return to a
+state equivalent with pre-transition network performance levels. The PDR has decreased
+to a value of 0.93; however, the latency and jitter are both increasing. Queue sizes also
+remain higher than normal, indicating that there is still temporary congestion and that
+
+there are still routes being recovered from this transition. The above result indicates that
+formation switching has a substantial and ongoing effect on routing performance of
+AODV, in the context of mobility, even when the topology has returned to a state of
+stability.
+
+
+## 5. Statement of Work........................................................................................................
+
+Since the project is clearly outlined through network layers, the delegation of tasks was
+
+pretty easy to implement. All members participated in the research of the topic. The
+physical layer was implemented by Andrew Santos and Alyssa Serrano, the MAC layer
+by Sergio Fernandez Donneys and Evan Tardiff, and the Routing and Networking by
+Afnan Algharbi, Halie Do, and Jahnavi Panchal. The Mobility layer as well as topology,
+GUI and Visualization were a collaboration between Cristian Carino and Reinier
+
+Bondoc.The testing was done by Jahnavi Panchal. Additionally there were miscellaneous
+tasks that took place such as team management and documentation as well as this
+document which was done by Afnan Algharbi and Alyssa Serrano. Even though tasks
+were divided, we all collaborated together when separate layers needed extra aid and met
+weekly to discuss progress.
+
+## 6. Conclusion References...................................................................................................
+
+Ultimately, this Network Simulator offers a highly flexible and modular platform to
+explore the communication, routing, mobility, and performance of multiple drones
+
+working together over a shared wireless network. As a result of this flexibility, users can
+
+
+easily configure and experiment with different types of protocols, mobility models, and
+channel conditions while accessing the same visual representation and performance
+
+metrics to assist with their analysis. The testing and evaluation of the Network Simulator
+indicates that it has the ability to produce realistic behaviours for drones operating in
+varying types of networks across different scenarios and scales. Therefore, it has great
+potential for future research, education, and development related to multi-drone
+communication and can provide a robust research tool for those working on developing
+multipoint wireless networks. In addition, because the Network Simulator is based upon
+
+an extensible framework, it has the capacity to continue to develop as new technologies
+and networking concerns arise.
+
+
+References
+[1] Z. Zhou _et al_ ., “UavNetSim-v1: A Python based Simulation Platform for UAV
+Communication Networks,” GitHub. Accessed: Dec. 6, 2025. [Online]. Available:
+https://github.com/Zihao-Felix-Zhou/UavNetSim-v1
+
+GitHub
+
+[2] “Review of IEEE-802.11n,” _Linux Wireless documentation_. Accessed: Dec. 6, 2025.
+[Online]. Available:
+https://wireless.docs.kernel.org/en/latest/en/developers/documentation/ieee80211/802.11n.html
+
+Linux Wireless Documentation
+
+[3] Cisco Systems, “802.11ac MCS rates,” _Cisco Support Community_. Accessed: Dec. 6, 2025.
+[Online]. Available:
+https://community.cisco.com/t5/wireless-mobility-knowledge-base/802-11ac-mcs-rates/ta-p/3155
+920
+
+
