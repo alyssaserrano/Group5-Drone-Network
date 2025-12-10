@@ -4,14 +4,6 @@ from utils import config
 from simulator.simulator import Simulator
 from visualization.visualizer import SimulationVisualizer
 
-"""
-  _   _                   _   _          _     ____    _             
- | | | |   __ _  __   __ | \ | |   ___  | |_  / ___|  (_)  _ __ ___  
- | | | |  / _` | \ \ / / |  \| |  / _ \ | __| \___ \  | | | '_ ` _ \ 
- | |_| | | (_| |  \ V /  | |\  | |  __/ | |_   ___) | | | | | | | | |
-  \___/   \__,_|   \_/   |_| \_|  \___|  \__| |____/  |_| |_| |_| |_|
-                                                                                                                                                                                                                                                                                           
-"""
 
 if __name__ == "__main__":
     # Simulation setup
